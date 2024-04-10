@@ -2,7 +2,7 @@ package quicklist
 
 import (
 	"encoding/binary"
-	"math"
+	"math/bits"
 	"slices"
 )
 
@@ -11,7 +11,9 @@ func appendUvarint(b []byte, n int, reverse bool) []byte {
 		return binary.AppendUvarint(b, uint64(n))
 	}
 	bb := binary.AppendUvarint(bpool.Get(binary.MaxVarintLen32)[:0], uint64(n))
-	slices.Reverse(bb)
+	if len(bb) > 1 {
+		slices.Reverse(bb)
+	}
 	b = append(b, bb...)
 	bpool.Put(bb)
 	return b
@@ -38,18 +40,17 @@ func uvarintReverse(buf []byte) (uint64, int) {
 	return 0, 0
 }
 
-func varintLength[T int](x T) (n int) {
-	if x > math.MaxUint32 {
-		panic("overflow")
+// SizeUvarint
+// See https://go-review.googlesource.com/c/go/+/572196/1/src/encoding/binary/varint.go#174
+func SizeUvarint(x uint64) int {
+	return int(9*uint32(bits.Len64(x))+64) / 64
+}
+
+// SizeVarint
+func SizeVarint(x int64) int {
+	ux := uint64(x) << 1
+	if x < 0 {
+		ux = ^ux
 	}
-	if x < (1 << 7) {
-		return 1
-	} else if x < (1 << 14) {
-		return 2
-	} else if x < (1 << 21) {
-		return 3
-	} else if x < (1 << 28) {
-		return 4
-	}
-	return 5
+	return SizeUvarint(ux)
 }

@@ -36,13 +36,4 @@ func TestUtils(t *testing.T) {
 			assert.Equal(s1, s3)
 		}
 	})
-
-	t.Run("varintLength", func(t *testing.T) {
-		bb := make([]byte, 0, 10)
-		for i := 0; i < math.MaxUint16; i++ {
-			bb = binary.AppendUvarint(bb, uint64(i))
-			assert.Equal(len(bb), varintLength(i))
-			bb = bb[:0]
-		}
-	})
 }

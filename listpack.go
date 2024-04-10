@@ -89,7 +89,7 @@ func (lp *ListPack) LPop() (string, bool) {
 	dataLen, n := binary.Uvarint(lp.data)
 	tail := n + int(dataLen)
 	data := lp.data[n:tail]
-	lp.data = lp.data[tail+varintLength(tail):]
+	lp.data = lp.data[tail+SizeUvarint(uint64(tail)):]
 	lp.size--
 	return string(data), true
 }
@@ -101,7 +101,7 @@ func (lp *ListPack) Size() int {
 // encode data to [data_len, data, entry_len].
 func encodeEntry(data string) []byte {
 	n := len(data)
-	want := varintLength(n)*2 + 1 + n
+	want := SizeUvarint(uint64(n))*2 + 1 + n
 	b := bpool.Get(want)[:0]
 	b = appendUvarint(b, len(data), false)
 	b = append(b, data...)
