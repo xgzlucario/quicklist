@@ -40,10 +40,10 @@ const (
 	Using this structure, it is fast to iterate from both sides.
 */
 type ListPack struct {
-	encode EncodeType
-	size   uint16
-	data   []byte
-	// prev, next *ListPack
+	encode     EncodeType
+	size       uint16
+	data       []byte
+	prev, next *ListPack
 }
 
 func NewListPack() *ListPack {
@@ -70,8 +70,8 @@ func (lp *ListPack) LPush(data string) {
 }
 
 func (lp *ListPack) RPop() (res string, ok bool) {
-	lp.iterInternal2(func(_ int, data string, entryStartPos, _ int) (stop bool) {
-		res, ok = data, true
+	lp.iterBack(0, 1, func(data []byte, entryStartPos, _ int) (stop bool) {
+		res, ok = string(data), true
 		lp.data = lp.data[:entryStartPos]
 		lp.size--
 		return true
@@ -80,34 +80,27 @@ func (lp *ListPack) RPop() (res string, ok bool) {
 }
 
 func (lp *ListPack) LPop() (res string, ok bool) {
-	lp.iterInternal(func(_ int, data string, _, entryEndPos int) bool {
-		res, ok = data, true
-		lp.data = lp.data[entryEndPos:]
+	lp.iterFront(0, 1, func(data []byte, _, entryEndPos int) bool {
+		res, ok = string(data), true
+		lp.data = append(lp.data[:0], lp.data[entryEndPos:]...)
 		lp.size--
 		return true
 	})
 	return
 }
 
-func (lp *ListPack) Range(f func(i int, data string) (stop bool)) {
-	lp.iterInternal(func(i int, data string, _, _ int) (stop bool) {
-		return f(i, data)
-	})
-}
-
-func (lp *ListPack) RevRange(f func(i int, data string) (stop bool)) {
-	lp.iterInternal2(func(i int, data string, _, _ int) (stop bool) {
-		return f(i, data)
-	})
-}
-
 func (lp *ListPack) Size() int {
 	return int(lp.size)
 }
 
-func (lp *ListPack) iterInternal(f func(i int, data string, entryStartPos, entryEndPos int) (stop bool)) {
+type lpIterator func(data []byte, entryStartPos, entryEndPos int) (stop bool)
+
+func (lp *ListPack) iterFront(start, end int, f lpIterator) {
+	if end == -1 {
+		end = lp.Size()
+	}
 	var index int
-	for i := 0; i < int(lp.size); i++ {
+	for i := 0; i < end; i++ {
 		/*
 			  index     dataStartPos    dataEndPos            indexNext
 				|            |              |                     |
@@ -122,16 +115,19 @@ func (lp *ListPack) iterInternal(f func(i int, data string, entryStartPos, entry
 		data := lp.data[dataStartPos:dataEndPos]
 		indexNext := dataEndPos + SizeUvarint(dataLen+uint64(n))
 
-		if f(i, string(data), index, indexNext) {
+		if i >= start && f(data, index, indexNext) {
 			return
 		}
 		index = indexNext
 	}
 }
 
-func (lp *ListPack) iterInternal2(f func(i int, data string, entryStartPos, entryEndPos int) (stop bool)) {
+func (lp *ListPack) iterBack(start, end int, f lpIterator) {
+	if end == -1 {
+		end = lp.Size()
+	}
 	var index = len(lp.data)
-	for i := 0; i < int(lp.size); i++ {
+	for i := 0; i < end; i++ {
 		/*
 			  indexNext  dataStartPos    dataEndPos               index
 				  |            |              |                     |
@@ -148,7 +144,7 @@ func (lp *ListPack) iterInternal2(f func(i int, data string, entryStartPos, entr
 		dataEndPos := dataStartPos + int(dataLen)
 		data := lp.data[dataStartPos:dataEndPos]
 
-		if f(i, string(data), indexNext, index) {
+		if i >= start && f(data, indexNext, index) {
 			return
 		}
 		index = indexNext

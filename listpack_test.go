@@ -7,6 +7,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func genListPack(start, end int) *ListPack {
+	lp := NewListPack()
+	for i := start; i < end; i++ {
+		lp.RPush(genKey(i))
+	}
+	return lp
+}
+
+func genKey(i int) string {
+	return fmt.Sprintf("%08d", i)
+}
+
 func TestListPack(t *testing.T) {
 	assert := assert.New(t)
 	const N = 1000
@@ -15,11 +27,11 @@ func TestListPack(t *testing.T) {
 		lp := NewListPack()
 		for i := 0; i < N; i++ {
 			assert.Equal(lp.Size(), i)
-			lp.RPush(fmt.Sprintf("%08d", i))
+			lp.RPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			val, ok := lp.LPop()
-			assert.Equal(val, fmt.Sprintf("%08d", i))
+			assert.Equal(val, genKey(i))
 			assert.True(ok)
 		}
 	})
@@ -28,40 +40,40 @@ func TestListPack(t *testing.T) {
 		lp := NewListPack()
 		for i := 0; i < N; i++ {
 			assert.Equal(lp.Size(), i)
-			lp.LPush(fmt.Sprintf("%08d", i))
+			lp.LPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			val, ok := lp.RPop()
-			assert.Equal(val, fmt.Sprintf("%08d", i))
+			assert.Equal(val, genKey(i))
 			assert.True(ok)
 		}
 	})
 
-	t.Run("range", func(t *testing.T) {
-		lp := NewListPack()
-		for i := 0; i < N; i++ {
-			assert.Equal(lp.Size(), i)
-			lp.RPush(fmt.Sprintf("%08d", i))
-		}
+	t.Run("iterFront", func(t *testing.T) {
+		lp := genListPack(0, N)
 
-		// range
 		var count int
-		lp.Range(func(i int, s string) (stop bool) {
-			assert.Equal(count, i)
-			assert.Equal(s, fmt.Sprintf("%08d", i))
+		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(count))
 			count++
 			return false
 		})
 		assert.Equal(count, N)
 
-		// revrange
 		count = 0
-		lp.RevRange(func(i int, s string) (stop bool) {
-			assert.Equal(count, i)
-			assert.Equal(s, fmt.Sprintf("%08d", N-i-1))
+		lp.iterFront(0, N/2, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(count))
 			count++
 			return false
 		})
-		assert.Equal(count, N)
+		assert.Equal(count, N/2)
+
+		count = 0
+		lp.iterFront(N/2, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(count+N/2))
+			count++
+			return false
+		})
+		assert.Equal(count, N/2)
 	})
 }
