@@ -36,4 +36,32 @@ func TestListPack(t *testing.T) {
 			assert.True(ok)
 		}
 	})
+
+	t.Run("range", func(t *testing.T) {
+		lp := NewListPack()
+		for i := 0; i < N; i++ {
+			assert.Equal(lp.Size(), i)
+			lp.RPush(fmt.Sprintf("%08d", i))
+		}
+
+		// range
+		var count int
+		lp.Range(func(i int, s string) (stop bool) {
+			assert.Equal(count, i)
+			assert.Equal(s, fmt.Sprintf("%08d", i))
+			count++
+			return false
+		})
+		assert.Equal(count, N)
+
+		// revrange
+		count = 0
+		lp.RevRange(func(i int, s string) (stop bool) {
+			assert.Equal(count, i)
+			assert.Equal(s, fmt.Sprintf("%08d", N-i-1))
+			count++
+			return false
+		})
+		assert.Equal(count, N)
+	})
 }
