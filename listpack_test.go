@@ -52,28 +52,62 @@ func TestListPack(t *testing.T) {
 	t.Run("iterFront", func(t *testing.T) {
 		lp := genListPack(0, N)
 
-		var count int
+		// iter [0, -1]
+		var i int
 		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
-			assert.Equal(string(data), genKey(count))
-			count++
+			assert.Equal(string(data), genKey(i))
+			i++
 			return false
 		})
-		assert.Equal(count, N)
+		assert.Equal(i, N)
 
-		count = 0
+		// iter [0, N/2]
+		i = 0
 		lp.iterFront(0, N/2, func(data []byte, _, _ int) bool {
-			assert.Equal(string(data), genKey(count))
-			count++
+			assert.Equal(string(data), genKey(i))
+			i++
 			return false
 		})
-		assert.Equal(count, N/2)
+		assert.Equal(i, N/2)
 
-		count = 0
+		// iter [N/2, -1]
+		i = 0
 		lp.iterFront(N/2, -1, func(data []byte, _, _ int) bool {
-			assert.Equal(string(data), genKey(count+N/2))
-			count++
+			assert.Equal(string(data), genKey(i+N/2))
+			i++
 			return false
 		})
-		assert.Equal(count, N/2)
+		assert.Equal(i, N/2)
+	})
+
+	t.Run("iterBack", func(t *testing.T) {
+		lp := genListPack(0, N)
+
+		// iter [0, -1]
+		var i int
+		lp.iterBack(0, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(N-1-i))
+			i++
+			return false
+		})
+		assert.Equal(i, N)
+
+		// iter [0, N/2]
+		i = 0
+		lp.iterBack(0, N/2, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(N-1-i))
+			i++
+			return false
+		})
+		assert.Equal(i, N/2)
+
+		// iter [N/2, -1]
+		i = 0
+		lp.iterBack(N/2, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(N/2-i-1))
+			i++
+			return false
+		})
+		assert.Equal(i, N/2)
 	})
 }
