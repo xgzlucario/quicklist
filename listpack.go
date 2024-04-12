@@ -54,15 +54,12 @@ func NewListPack() *ListPack {
 }
 
 func (lp *ListPack) RPush(data string) {
-	entry := encodeEntry(data)
-	lp.data = append(lp.data, entry...)
+	lp.data = appendEntry(lp.data, data)
 	lp.size++
-	// reuse
-	bpool.Put(entry)
 }
 
 func (lp *ListPack) LPush(data string) {
-	entry := encodeEntry(data)
+	entry := appendEntry(nil, data)
 	lp.data = slices.Insert(lp.data, 0, entry...)
 	lp.size++
 	// reuse
@@ -70,7 +67,7 @@ func (lp *ListPack) LPush(data string) {
 }
 
 func (lp *ListPack) RPop() (res string, ok bool) {
-	lp.iterBack(0, 1, func(data []byte, entryStartPos, _ int) (stop bool) {
+	lp.iterBack(0, 1, func(data []byte, entryStartPos, _ int) bool {
 		res, ok = string(data), true
 		lp.data = lp.data[:entryStartPos]
 		lp.size--
@@ -151,18 +148,38 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 	}
 }
 
-// encode data to [data_len, data, entry_len].
-func encodeEntry(data string) []byte {
-	n := len(data)
-	want := SizeUvarint(uint64(n))*2 + 1 + n
-	b := bpool.Get(want)[:0]
-	// encode
-	b = appendUvarint(b, len(data), false)
-	b = append(b, data...)
-	b = appendUvarint(b, len(b), true)
-	// check
-	if cap(b) > len(b)+1 {
-		panic("error mem alloc")
+func (lp *ListPack) Encode(encodeType EncodeType) error {
+	if lp.encode == encodeType {
+		return nil
 	}
-	return b
+	lp.encode = encodeType
+
+	switch encodeType {
+	case EncodeCompressed:
+		alloc := bpool.Get(len(lp.data))
+		alloc = encoder.EncodeAll(lp.data, alloc)
+		bpool.Put(lp.data)
+		lp.data = alloc
+
+	case EncodeRaw:
+		alloc := bpool.Get(maxListPackSize)
+		alloc, err := decoder.DecodeAll(lp.data, alloc)
+		if err != nil {
+			return err
+		}
+		bpool.Put(lp.data)
+		lp.data = alloc
+	}
+	return nil
+}
+
+// encode data to [data_len, data, entry_len].
+func appendEntry(dst []byte, data string) []byte {
+	if dst == nil {
+		dst = bpool.Get(maxListPackSize)[:0]
+	}
+	before := len(dst)
+	dst = appendUvarint(dst, len(data), false)
+	dst = append(dst, data...)
+	return appendUvarint(dst, len(dst)-before, true)
 }

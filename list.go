@@ -126,22 +126,22 @@ func (l *List) RPop() (key string, ok bool) {
 // }
 
 // Set
-func (l *List) Set(index int, key string) (ok bool) {
-	// l.mu.Lock()
-	// l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, _ []byte) bool {
-	// 	alloc := bpool.Get(len(key) + 5)[:0]
-	// 	alloc = append(
-	// 		binary.AppendUvarint(alloc, uint64(len(key))),
-	// 		key...,
-	// 	)
-	// 	node.data = slices.Replace(node.data, dataStart, dataEnd, alloc...)
-	// 	bpool.Put(alloc)
-	// 	ok = true
-	// 	return true
-	// })
-	// l.mu.Unlock()
-	return
-}
+// func (l *List) Set(index int, key string) (ok bool) {
+// l.mu.Lock()
+// l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, _ []byte) bool {
+// 	alloc := bpool.Get(len(key) + 5)[:0]
+// 	alloc = append(
+// 		binary.AppendUvarint(alloc, uint64(len(key))),
+// 		key...,
+// 	)
+// 	node.data = slices.Replace(node.data, dataStart, dataEnd, alloc...)
+// 	bpool.Put(alloc)
+// 	ok = true
+// 	return true
+// })
+// l.mu.Unlock()
+// return
+// }
 
 // Size
 func (l *List) Size() (n int) {
@@ -153,11 +153,7 @@ func (l *List) Size() (n int) {
 	return
 }
 
-// iterator iter each keys in list by dataStart, dataEnd, and raw key.
-type iterator func(dataStart, dataEnd int, key []byte) (stop bool)
-
-// iter
-func (l *List) iter(start, end int, f iterator) {
+func (l *List) iterFront(start, end int, f lpIterator) {
 	// param check
 	count := end - start
 	if end == -1 {
@@ -179,9 +175,9 @@ func (l *List) iter(start, end int, f iterator) {
 
 	var stop bool
 	for !stop && count > 0 && cur != nil {
-		cur.iterFront(start, end, func(data []byte, entryStartPos, entryEndPos int) (stop bool) {
+		cur.iterFront(start, -1, func(data []byte, entryStartPos, entryEndPos int) bool {
 			// if start
-			stop = f(entryStartPos, entryEndPos, data)
+			stop = f(data, entryStartPos, entryEndPos)
 			count--
 			return stop || count == 0
 		})
@@ -193,7 +189,7 @@ func (l *List) iter(start, end int, f iterator) {
 // Range
 func (l *List) Range(start, end int, f func(string) (stop bool)) {
 	l.mu.RLock()
-	l.iter(start, end, func(_, _ int, key []byte) bool {
+	l.iterFront(start, end, func(key []byte, _, _ int) bool {
 		return f(string(key))
 	})
 	l.mu.RUnlock()
