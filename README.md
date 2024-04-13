@@ -64,15 +64,19 @@ goos: linux
 goarch: amd64
 pkg: github.com/xgzlucario/quicklist
 cpu: 13th Gen Intel(R) Core(TM) i5-13600KF
-BenchmarkList/lpush-20           6917678              171.4 ns/op            81 B/op          4 allocs/op
-BenchmarkList/rpush-20           9794673              121.2 ns/op            57 B/op          3 allocs/op
-BenchmarkList/lpop-20           33277419              36.08 ns/op            12 B/op          1 allocs/op
-BenchmarkList/rpop-20           34612028              34.37 ns/op            11 B/op          1 allocs/op
-BenchmarkList/index-20           2526723              477.1 ns/op             8 B/op          1 allocs/op
-BenchmarkList/range-20             26451              44666 ns/op             0 B/op          0 allocs/op
-BenchmarkList/revrange-20          22366              53787 ns/op             0 B/op          0 allocs/op
+BenchmarkList/lpush-20           6714782             177.5 ns/op            81 B/op          4 allocs/op
+BenchmarkList/rpush-20           9673924             122.9 ns/op            57 B/op          3 allocs/op
+BenchmarkList/lpop-20           33424344             36.82 ns/op            12 B/op          1 allocs/op
+BenchmarkList/rpop-20           34043060             35.22 ns/op            11 B/op          1 allocs/op
+BenchmarkList/index-20           2519694             478.2 ns/op             8 B/op          1 allocs/op
+BenchmarkList/set-20             2319103             520.9 ns/op            16 B/op          1 allocs/op
+BenchmarkList/range-20             26865             44864 ns/op             0 B/op          0 allocs/op
+BenchmarkList/revrange-20                  23131           52130 ns/op               0 B/op          0 allocs/op
+BenchmarkListPack/set/same-len-20        1000000            1009 ns/op              16 B/op          1 allocs/op
+BenchmarkListPack/set/less-len-20        1000000            1011 ns/op              16 B/op          2 allocs/op
+BenchmarkListPack/set/great-len-20       1000000            1020 ns/op              24 B/op          2 allocs/op
 PASS
-ok      github.com/xgzlucario/quicklist 19.181s
+ok      github.com/xgzlucario/quicklist 23.947s
 ```
 
 ```
