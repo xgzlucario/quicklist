@@ -8,7 +8,8 @@ package main
 
 import (
 	"fmt"
-	"quicklist"
+    
+	"github.com/xgzlucario/quicklist"
 )
 
 func genKey(i int) string {
