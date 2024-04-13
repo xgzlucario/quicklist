@@ -1,6 +1,6 @@
 # quicklist
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/xgzlucario/quicklist)](https://goreportcard.com/report/github.com/xgzlucario/quicklist) [![Go Reference](https://pkg.go.dev/badge/github.com/xgzlucario/quicklist.svg)](https://pkg.go.dev/github.com/xgzlucario/quicklist) ![](https://img.shields.io/badge/go-1.22-orange.svg) ![](https://img.shields.io/github/languages/code-size/xgzlucario/quicklist.svg) [![codecov](https://codecov.io/gh/xgzlucario/GigaCache/graph/badge.svg?token=yC1xELYaM2)](https://codecov.io/gh/xgzlucario/quicklist) [![Test](https://github.com/xgzlucario/quicklist/actions/workflows/go.yml/badge.svg)](https://github.com/xgzlucario/quicklist/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xgzlucario/quicklist)](https://goreportcard.com/report/github.com/xgzlucario/quicklist) [![Go Reference](https://pkg.go.dev/badge/github.com/xgzlucario/quicklist.svg)](https://pkg.go.dev/github.com/xgzlucario/quicklist) ![](https://img.shields.io/badge/go-1.22-orange.svg) ![](https://img.shields.io/github/languages/code-size/xgzlucario/quicklist.svg) [![codecov](https://codecov.io/gh/xgzlucario/quicklist/graph/badge.svg?token=Kn26eInkEY)](https://codecov.io/gh/xgzlucario/quicklist) [![Test](https://github.com/xgzlucario/quicklist/actions/workflows/go.yml/badge.svg)](https://github.com/xgzlucario/quicklist/actions/workflows/go.yml)
 
 Implement redis quicklist data structure, based on listpack rather than ziplist to optimize cascade update.
 
