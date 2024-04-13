@@ -1,6 +1,7 @@
 package quicklist
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -38,6 +39,13 @@ func BenchmarkList(b *testing.B) {
 			ls.Index(i % 10000)
 		}
 	})
+	b.Run("set", func(b *testing.B) {
+		ls := genList(0, 10000)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ls.Set(i%10000, genKey(10000-i))
+		}
+	})
 	b.Run("range", func(b *testing.B) {
 		ls := genList(0, 10000)
 		b.ResetTimer()
@@ -54,6 +62,30 @@ func BenchmarkList(b *testing.B) {
 			ls.RevRange(0, -1, func(s []byte) (stop bool) {
 				return false
 			})
+		}
+	})
+}
+
+func BenchmarkListPack(b *testing.B) {
+	b.Run("set/same-len", func(b *testing.B) {
+		ls := genListPack(0, 1000)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ls.Set(i%1000, fmt.Sprintf("%08x", i))
+		}
+	})
+	b.Run("set/less-len", func(b *testing.B) {
+		ls := genListPack(0, 1000)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ls.Set(i%1000, fmt.Sprintf("%07x", i))
+		}
+	})
+	b.Run("set/great-len", func(b *testing.B) {
+		ls := genListPack(0, 1000)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ls.Set(i%1000, fmt.Sprintf("%09x", i))
 		}
 	})
 }

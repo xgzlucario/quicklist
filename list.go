@@ -85,9 +85,6 @@ func (l *QuickList) LPop() (key string, ok bool) {
 		if l.head.next == nil {
 			return
 		}
-		if cap(l.head.data) != maxListPackSize {
-			panic("bytes cap not equal")
-		}
 		bpool.Put(l.head.data)
 		l.head = l.head.next
 		l.head.prev = nil
@@ -106,9 +103,6 @@ func (l *QuickList) RPop() (key string, ok bool) {
 		if l.tail.prev == nil {
 			return
 		}
-		if cap(l.tail.data) != maxListPackSize {
-			panic("bytes cap not equal")
-		}
 		bpool.Put(l.tail.data)
 		l.tail = l.tail.prev
 		l.tail.next = nil
@@ -117,37 +111,21 @@ func (l *QuickList) RPop() (key string, ok bool) {
 	return l.tail.RPop()
 }
 
-// Delete
-// func (l *QuickList) Delete(index int) (key string, ok bool) {
-// 	l.mu.Lock()
-// 	l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, bkey []byte) bool {
-// 		key = string(bkey)
-// 		node.data = slices.Delete(node.data, dataStart, dataEnd)
-// 		node.n--
-// 		ok = true
-// 		return true
-// 	})
-// 	l.mu.Unlock()
-// 	return
-// }
-
 // Set
-// func (l *QuickList) Set(index int, key string) (ok bool) {
-// l.mu.Lock()
-// l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, _ []byte) bool {
-// 	alloc := bpool.Get(len(key) + 5)[:0]
-// 	alloc = append(
-// 		binary.AppendUvarint(alloc, uint64(len(key))),
-// 		key...,
-// 	)
-// 	node.data = slices.Replace(node.data, dataStart, dataEnd, alloc...)
-// 	bpool.Put(alloc)
-// 	ok = true
-// 	return true
-// })
-// l.mu.Unlock()
-// return
-// }
+func (l *QuickList) Set(index int, key string) (ok bool) {
+	l.mu.Lock()
+	cur := l.head
+	for index >= cur.Size() {
+		index -= cur.Size()
+		cur = cur.next
+		if cur == nil {
+			return
+		}
+	}
+	ok = cur.Set(index, key)
+	l.mu.Unlock()
+	return
+}
 
 // Size
 func (l *QuickList) Size() (n int) {
@@ -159,7 +137,9 @@ func (l *QuickList) Size() (n int) {
 	return
 }
 
-func (l *QuickList) iterFront(start, end int, f lpIterator) {
+type lsIterator func(data []byte) (stop bool)
+
+func (l *QuickList) iterFront(start, end int, f lsIterator) {
 	count := end - start
 	if end == -1 {
 		count = math.MaxInt
@@ -179,8 +159,8 @@ func (l *QuickList) iterFront(start, end int, f lpIterator) {
 
 	var stop bool
 	for !stop && count > 0 && cur != nil {
-		cur.iterFront(start, -1, func(data []byte, entryStartPos, entryEndPos int) bool {
-			stop = f(data, entryStartPos, entryEndPos)
+		cur.Range(start, -1, func(data []byte) bool {
+			stop = f(data)
 			count--
 			return stop || count == 0
 		})
@@ -189,7 +169,7 @@ func (l *QuickList) iterFront(start, end int, f lpIterator) {
 	}
 }
 
-func (l *QuickList) iterBack(start, end int, f lpIterator) {
+func (l *QuickList) iterBack(start, end int, f lsIterator) {
 	count := end - start
 	if end == -1 {
 		count = math.MaxInt
@@ -209,8 +189,8 @@ func (l *QuickList) iterBack(start, end int, f lpIterator) {
 
 	var stop bool
 	for !stop && count > 0 && cur != nil {
-		cur.iterBack(start, -1, func(data []byte, entryStartPos, entryEndPos int) bool {
-			stop = f(data, entryStartPos, entryEndPos)
+		cur.RevRange(start, -1, func(data []byte) bool {
+			stop = f(data)
 			count--
 			return stop || count == 0
 		})
@@ -220,20 +200,16 @@ func (l *QuickList) iterBack(start, end int, f lpIterator) {
 }
 
 // Range
-func (l *QuickList) Range(start, end int, f func([]byte) (stop bool)) {
+func (l *QuickList) Range(start, end int, f lsIterator) {
 	l.mu.RLock()
-	l.iterFront(start, end, func(key []byte, _, _ int) bool {
-		return f(key)
-	})
+	l.iterFront(start, end, f)
 	l.mu.RUnlock()
 }
 
 // RevRange
-func (l *QuickList) RevRange(start, end int, f func([]byte) (stop bool)) {
+func (l *QuickList) RevRange(start, end int, f lsIterator) {
 	l.mu.RLock()
-	l.iterBack(start, end, func(key []byte, _, _ int) bool {
-		return f(key)
-	})
+	l.iterBack(start, end, f)
 	l.mu.RUnlock()
 }
 

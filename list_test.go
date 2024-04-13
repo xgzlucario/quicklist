@@ -96,21 +96,25 @@ func TestList(t *testing.T) {
 		}
 	})
 
-	// t.Run("set", func(t *testing.T) {
-	// 	ls := New()
-	// 	vls := make([]string, 0)
-	// 	for i := 0; i < N; i++ {
-	// 		k := genKey(i)
-	// 		ls.RPush(k)
-	// 		vls = append(vls, k)
-	// 	}
-	// 	for i := 0; i < N; i++ {
-	// 		newK := fmt.Sprintf("kk%08x", i)
-	// 		ls.Set(i, newK)
-	// 		vls[i] = newK
-	// 	}
-	// 	assert.Equal(ls.Keys(), vls)
-	// })
+	t.Run("set", func(t *testing.T) {
+		ls := genList(0, N)
+		for i := 0; i < N; i++ {
+			newK := fmt.Sprintf("newkk-%x", i)
+			ok := ls.Set(i, newK)
+			assert.True(ok, i)
+		}
+		var count int
+		ls.Range(0, -1, func(b []byte) bool {
+			targetK := fmt.Sprintf("newkk-%x", count)
+			assert.Equal(string(b), targetK)
+			count++
+			return false
+		})
+		assert.Equal(N, count)
+
+		ok := ls.Set(N+1, "new")
+		assert.False(ok)
+	})
 
 	t.Run("marshal", func(t *testing.T) {
 		ls := genList(0, N)
@@ -223,13 +227,13 @@ func FuzzList(f *testing.F) {
 
 		// Set
 		case 10:
-			// if len(vls) > 0 {
-			// 	index := rand.IntN(len(vls))
-			// 	randKey := fmt.Sprintf("%d", rand.Uint32())
-			// 	ok := ls.Set(index, randKey)
-			// 	assert.True(ok)
-			// 	vls[index] = randKey
-			// }
+			if len(vls) > 0 {
+				index := rand.IntN(len(vls))
+				randKey := fmt.Sprintf("%d", rand.Uint32())
+				ok := ls.Set(index, randKey)
+				assert.True(ok)
+				vls[index] = randKey
+			}
 
 		// Index
 		case 11:

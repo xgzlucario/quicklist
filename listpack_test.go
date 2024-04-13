@@ -115,6 +115,9 @@ func TestListPack(t *testing.T) {
 		lp := genListPack(0, N)
 		sizeBefore := len(lp.data)
 
+		// encode same
+		assert.Nil(lp.Encode(EncodeRaw))
+
 		// compress
 		err := lp.Encode(EncodeZstdCompressed)
 		assert.Nil(err)
@@ -136,5 +139,21 @@ func TestListPack(t *testing.T) {
 			i++
 			return false
 		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		lp := genListPack(0, N)
+		for i := 0; i < N; i++ {
+			ok := lp.Set(i, fmt.Sprintf("newkey-%d", i))
+			assert.True(ok)
+		}
+
+		var i int
+		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), fmt.Sprintf("newkey-%d", i))
+			i++
+			return false
+		})
+		assert.Equal(i, N)
 	})
 }

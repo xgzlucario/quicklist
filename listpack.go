@@ -2,6 +2,7 @@ package quicklist
 
 import (
 	"encoding/binary"
+	"log"
 	"slices"
 
 	"github.com/klauspost/compress/zstd"
@@ -98,14 +99,14 @@ func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 	}
 	var index int
 	for i := 0; i < end; i++ {
-		/*
-			  index     dataStartPos    dataEndPos            indexNext
-				|            |              |                     |
-				+------------+--------------+---------------------+-----+
-			--> |  data_len  |     data     |      entry_len      | ... |
-				+------------+--------------+---------------------+-----+
-				|<--- n ---->|<- data_len ->|<-- size_entry_len ->|
-		*/
+		//
+		//	  index     dataStartPos    dataEndPos            indexNext
+		//	    |            |              |                     |
+		//		+------------+--------------+---------------------+-----+
+		//  --> |  data_len  |     data     |      entry_len      | ... |
+		//		+------------+--------------+---------------------+-----+
+		//		|<--- n ---->|<- data_len ->|<-- size_entry_len ->|
+		//
 		dataLen, n := binary.Uvarint(lp.data[index:])
 		dataStartPos := index + n
 		dataEndPos := dataStartPos + int(dataLen)
@@ -125,15 +126,15 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 	}
 	var index = len(lp.data)
 	for i := 0; i < end; i++ {
-		/*
-			  indexNext  dataStartPos    dataEndPos               index
-				  |            |              |                     |
-			+-----+------------+--------------+---------------------+
-			| ... |  data_len  |     data     |      entry_len      | <--
-			+-----+------------+--------------+---------------------+
-				  |<--- n ---->|<- data_len ->|<-- size_entry_len ->|
-				  |<------ entry_len -------->|
-		*/
+		//
+		//	  indexNext  dataStartPos    dataEndPos               index
+		//        |            |              |                     |
+		//  +-----+------------+--------------+---------------------+
+		//  | ... |  data_len  |     data     |      entry_len      | <--
+		//  +-----+------------+--------------+---------------------+
+		//        |<--- n ---->|<- data_len ->|<-- size_entry_len ->|
+		//        |<------ entry_len -------->|
+		//
 		entryLen, sizeEntryLen := uvarintReverse(lp.data[:index])
 		indexNext := index - int(entryLen) - sizeEntryLen
 		dataLen, n := binary.Uvarint(lp.data[indexNext:])
@@ -146,6 +147,47 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 		}
 		index = indexNext
 	}
+}
+
+func (lp *ListPack) Range(start, end int, f func([]byte) (stop bool)) {
+	lp.iterFront(start, end, func(data []byte, _, _ int) bool {
+		return f(data)
+	})
+}
+
+func (lp *ListPack) RevRange(start, end int, f func([]byte) (stop bool)) {
+	lp.iterBack(start, end, func(data []byte, _, _ int) bool {
+		return f(data)
+	})
+}
+
+func (lp *ListPack) Set(i int, data string) (ok bool) {
+	setFn := func(old []byte, entryStartPos, entryEndPos int) {
+		if len(data) == len(old) {
+			copy(old, data)
+		} else {
+			alloc := appendEntry(nil, data)
+			lp.data = slices.Replace(lp.data, entryStartPos, entryEndPos, alloc...)
+			bpool.Put(alloc)
+		}
+		ok = true
+	}
+
+	// When the target value is in the first half, use forward traversal;
+	// otherwise, use reverse traversal.
+	if i <= lp.Size()/2 {
+		lp.iterFront(i, i+1, func(old []byte, entryStartPos, entryEndPos int) bool {
+			setFn(old, entryStartPos, entryEndPos)
+			return true
+		})
+	} else {
+		i = lp.Size() - i - 1
+		lp.iterBack(i, i+1, func(old []byte, entryStartPos, entryEndPos int) bool {
+			setFn(old, entryStartPos, entryEndPos)
+			return true
+		})
+	}
+	return
 }
 
 func (lp *ListPack) Encode(encodeType EncodeType) error {
@@ -175,6 +217,9 @@ func (lp *ListPack) Encode(encodeType EncodeType) error {
 
 // encode data to [data_len, data, entry_len].
 func appendEntry(dst []byte, data string) []byte {
+	if len(data) > maxListPackSize {
+		log.Printf("warning: data size is too large")
+	}
 	if dst == nil {
 		dst = bpool.Get(maxListPackSize)[:0]
 	}

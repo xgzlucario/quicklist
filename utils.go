@@ -45,12 +45,3 @@ func uvarintReverse(buf []byte) (uint64, int) {
 func SizeUvarint(x uint64) int {
 	return int(9*uint32(bits.Len64(x))+64) / 64
 }
-
-// SizeVarint
-func SizeVarint(x int64) int {
-	ux := uint64(x) << 1
-	if x < 0 {
-		ux = ^ux
-	}
-	return SizeUvarint(ux)
-}
