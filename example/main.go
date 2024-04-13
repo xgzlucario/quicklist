@@ -40,7 +40,7 @@ func main() {
 	fmt.Println("RPop:", val, ok)
 
 	// Range
-	ls.Range(0, -1, func(s string) (stop bool) {
+	ls.Range(0, -1, func(s []byte) (stop bool) {
 		// do something
 		return false
 	})

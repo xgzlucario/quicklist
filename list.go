@@ -68,8 +68,8 @@ func (l *QuickList) RPush(keys ...string) {
 
 // Index
 func (l *QuickList) Index(i int) (val string, ok bool) {
-	l.Range(i, i+1, func(key string) bool {
-		val, ok = key, true
+	l.Range(i, i+1, func(key []byte) bool {
+		val, ok = string(key), true
 		return true
 	})
 	return
@@ -160,7 +160,6 @@ func (l *QuickList) Size() (n int) {
 }
 
 func (l *QuickList) iterFront(start, end int, f lpIterator) {
-	// param check
 	count := end - start
 	if end == -1 {
 		count = math.MaxInt
@@ -170,7 +169,6 @@ func (l *QuickList) iterFront(start, end int, f lpIterator) {
 	}
 
 	cur := l.head
-	// skip nodes
 	for start > cur.Size() {
 		start -= cur.Size()
 		cur = cur.next
@@ -182,7 +180,6 @@ func (l *QuickList) iterFront(start, end int, f lpIterator) {
 	var stop bool
 	for !stop && count > 0 && cur != nil {
 		cur.iterFront(start, -1, func(data []byte, entryStartPos, entryEndPos int) bool {
-			// if start
 			stop = f(data, entryStartPos, entryEndPos)
 			count--
 			return stop || count == 0
@@ -192,11 +189,50 @@ func (l *QuickList) iterFront(start, end int, f lpIterator) {
 	}
 }
 
+func (l *QuickList) iterBack(start, end int, f lpIterator) {
+	count := end - start
+	if end == -1 {
+		count = math.MaxInt
+	}
+	if start < 0 || count < 0 {
+		return
+	}
+
+	cur := l.tail
+	for start > cur.Size() {
+		start -= cur.Size()
+		cur = cur.prev
+		if cur == nil {
+			return
+		}
+	}
+
+	var stop bool
+	for !stop && count > 0 && cur != nil {
+		cur.iterBack(start, -1, func(data []byte, entryStartPos, entryEndPos int) bool {
+			stop = f(data, entryStartPos, entryEndPos)
+			count--
+			return stop || count == 0
+		})
+		cur = cur.prev
+		start = 0
+	}
+}
+
 // Range
-func (l *QuickList) Range(start, end int, f func(string) (stop bool)) {
+func (l *QuickList) Range(start, end int, f func([]byte) (stop bool)) {
 	l.mu.RLock()
 	l.iterFront(start, end, func(key []byte, _, _ int) bool {
-		return f(string(key))
+		return f(key)
+	})
+	l.mu.RUnlock()
+}
+
+// RevRange
+func (l *QuickList) RevRange(start, end int, f func([]byte) (stop bool)) {
+	l.mu.RLock()
+	l.iterBack(start, end, func(key []byte, _, _ int) bool {
+		return f(key)
 	})
 	l.mu.RUnlock()
 }

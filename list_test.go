@@ -130,23 +130,46 @@ func TestList(t *testing.T) {
 
 	t.Run("range", func(t *testing.T) {
 		ls := New()
-		ls.Range(1, 2, func(s string) (stop bool) {
+		ls.Range(1, 2, func(s []byte) bool {
 			panic("should not call")
 		})
 		ls = genList(0, N)
 
 		var count int
-		ls.Range(0, -1, func(s string) (stop bool) {
-			assert.Equal(s, genKey(count))
+		ls.Range(0, -1, func(s []byte) bool {
+			assert.Equal(string(s), genKey(count))
 			count++
 			return false
 		})
 		assert.Equal(count, N)
 
-		ls.Range(1, 1, func(s string) (stop bool) {
+		ls.Range(1, 1, func(s []byte) bool {
 			panic("should not call")
 		})
-		ls.Range(-1, -1, func(s string) (stop bool) {
+		ls.Range(-1, -1, func(s []byte) bool {
+			panic("should not call")
+		})
+	})
+
+	t.Run("revrange", func(t *testing.T) {
+		ls := New()
+		ls.RevRange(1, 2, func(s []byte) bool {
+			panic("should not call")
+		})
+		ls = genList(0, N)
+
+		var count int
+		ls.RevRange(0, -1, func(s []byte) bool {
+			assert.Equal(string(s), genKey(N-count-1))
+			count++
+			return false
+		})
+		assert.Equal(count, N)
+
+		ls.RevRange(1, 1, func(s []byte) bool {
+			panic("should not call")
+		})
+		ls.RevRange(-1, -1, func(s []byte) bool {
 			panic("should not call")
 		})
 	})
@@ -235,8 +258,8 @@ func FuzzList(f *testing.F) {
 				end := len(vls)/2 + rand.IntN(len(vls)/2)
 
 				keys := make([]string, 0, end-start)
-				ls.Range(start, end, func(s string) (stop bool) {
-					keys = append(keys, s)
+				ls.Range(start, end, func(s []byte) bool {
+					keys = append(keys, string(s))
 					return false
 				})
 				assert.Equal(keys, vls[start:end], fmt.Sprintf("start: %v, end: %v", start, end))
