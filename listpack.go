@@ -19,8 +19,8 @@ var (
 type EncodeType byte
 
 const (
-	EncodeRaw = iota + 1
-	EncodeCompressed
+	EncodeRaw EncodeType = iota + 1
+	EncodeZstdCompressed
 )
 
 // ListPack is a lists of strings serialization format on Redis.
@@ -155,14 +155,14 @@ func (lp *ListPack) Encode(encodeType EncodeType) error {
 	lp.encode = encodeType
 
 	switch encodeType {
-	case EncodeCompressed:
-		alloc := bpool.Get(len(lp.data))
+	case EncodeZstdCompressed:
+		alloc := bpool.Get(maxListPackSize)[:0]
 		alloc = encoder.EncodeAll(lp.data, alloc)
 		bpool.Put(lp.data)
 		lp.data = alloc
 
 	case EncodeRaw:
-		alloc := bpool.Get(maxListPackSize)
+		alloc := bpool.Get(maxListPackSize)[:0]
 		alloc, err := decoder.DecodeAll(lp.data, alloc)
 		if err != nil {
 			return err

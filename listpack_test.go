@@ -16,7 +16,7 @@ func genListPack(start, end int) *ListPack {
 }
 
 func genKey(i int) string {
-	return fmt.Sprintf("%08d", i)
+	return fmt.Sprintf("%08x", i)
 }
 
 func TestListPack(t *testing.T) {
@@ -109,5 +109,32 @@ func TestListPack(t *testing.T) {
 			return false
 		})
 		assert.Equal(i, N/2)
+	})
+
+	t.Run("comressed", func(t *testing.T) {
+		lp := genListPack(0, N)
+		sizeBefore := len(lp.data)
+
+		// compress
+		err := lp.Encode(EncodeZstdCompressed)
+		assert.Nil(err)
+		sizeNow := len(lp.data)
+
+		assert.Less(sizeNow, sizeBefore)
+
+		// decompress
+		err = lp.Encode(EncodeRaw)
+		assert.Nil(err)
+		sizeNow = len(lp.data)
+
+		assert.Equal(sizeNow, sizeBefore)
+
+		// check
+		var i int
+		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
+			assert.Equal(string(data), genKey(i))
+			i++
+			return false
+		})
 	})
 }

@@ -1,13 +1,19 @@
 package quicklist
 
 import (
-	"encoding/binary"
 	"math"
 	"sync"
+
+	"github.com/bytedance/sonic"
 )
 
-// List is double linked ziplist.
-type List struct {
+//	 +------------------------------ QuickList -----------------------------+
+//	 |	     +-----------+     +-----------+             +-----------+      |
+//	head --- | listpack0 | <-> | listpack1 | <-> ... <-> | listpackN | --- tail
+//	         +-----------+     +-----------+             +-----------+
+//
+// QuickList is double linked listpack.
+type QuickList struct {
 	mu         sync.RWMutex
 	head, tail *ListPack
 }
@@ -16,13 +22,13 @@ func SetEachNodeMaxSize(s int) {
 	maxListPackSize = s
 }
 
-// NewList
-func NewList() *List {
+// New create a quicklist instance.
+func New() *QuickList {
 	lp := NewListPack()
-	return &List{head: lp, tail: lp}
+	return &QuickList{head: lp, tail: lp}
 }
 
-func (l *List) lpush(key string) {
+func (l *QuickList) lpush(key string) {
 	if len(l.head.data)+len(key) >= maxListPackSize {
 		lp := NewListPack()
 		lp.next = l.head
@@ -33,7 +39,7 @@ func (l *List) lpush(key string) {
 }
 
 // LPush
-func (l *List) LPush(keys ...string) {
+func (l *QuickList) LPush(keys ...string) {
 	l.mu.Lock()
 	for _, k := range keys {
 		l.lpush(k)
@@ -41,7 +47,7 @@ func (l *List) LPush(keys ...string) {
 	l.mu.Unlock()
 }
 
-func (l *List) rpush(key string) {
+func (l *QuickList) rpush(key string) {
 	if len(l.tail.data)+len(key) >= maxListPackSize {
 		lp := NewListPack()
 		l.tail.next = lp
@@ -52,7 +58,7 @@ func (l *List) rpush(key string) {
 }
 
 // RPush
-func (l *List) RPush(keys ...string) {
+func (l *QuickList) RPush(keys ...string) {
 	l.mu.Lock()
 	for _, k := range keys {
 		l.rpush(k)
@@ -61,7 +67,7 @@ func (l *List) RPush(keys ...string) {
 }
 
 // Index
-func (l *List) Index(i int) (val string, ok bool) {
+func (l *QuickList) Index(i int) (val string, ok bool) {
 	l.Range(i, i+1, func(key string) bool {
 		val, ok = key, true
 		return true
@@ -70,7 +76,7 @@ func (l *List) Index(i int) (val string, ok bool) {
 }
 
 // LPop
-func (l *List) LPop() (key string, ok bool) {
+func (l *QuickList) LPop() (key string, ok bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -91,7 +97,7 @@ func (l *List) LPop() (key string, ok bool) {
 }
 
 // RPop
-func (l *List) RPop() (key string, ok bool) {
+func (l *QuickList) RPop() (key string, ok bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -112,7 +118,7 @@ func (l *List) RPop() (key string, ok bool) {
 }
 
 // Delete
-// func (l *List) Delete(index int) (key string, ok bool) {
+// func (l *QuickList) Delete(index int) (key string, ok bool) {
 // 	l.mu.Lock()
 // 	l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, bkey []byte) bool {
 // 		key = string(bkey)
@@ -126,7 +132,7 @@ func (l *List) RPop() (key string, ok bool) {
 // }
 
 // Set
-// func (l *List) Set(index int, key string) (ok bool) {
+// func (l *QuickList) Set(index int, key string) (ok bool) {
 // l.mu.Lock()
 // l.iter(index, index+1, func(node *lnode, dataStart, dataEnd int, _ []byte) bool {
 // 	alloc := bpool.Get(len(key) + 5)[:0]
@@ -144,7 +150,7 @@ func (l *List) RPop() (key string, ok bool) {
 // }
 
 // Size
-func (l *List) Size() (n int) {
+func (l *QuickList) Size() (n int) {
 	l.mu.RLock()
 	for cur := l.head; cur != nil; cur = cur.next {
 		n += cur.Size()
@@ -153,7 +159,7 @@ func (l *List) Size() (n int) {
 	return
 }
 
-func (l *List) iterFront(start, end int, f lpIterator) {
+func (l *QuickList) iterFront(start, end int, f lpIterator) {
 	// param check
 	count := end - start
 	if end == -1 {
@@ -187,7 +193,7 @@ func (l *List) iterFront(start, end int, f lpIterator) {
 }
 
 // Range
-func (l *List) Range(start, end int, f func(string) (stop bool)) {
+func (l *QuickList) Range(start, end int, f func(string) (stop bool)) {
 	l.mu.RLock()
 	l.iterFront(start, end, func(key []byte, _, _ int) bool {
 		return f(string(key))
@@ -195,40 +201,55 @@ func (l *List) Range(start, end int, f func(string) (stop bool)) {
 	l.mu.RUnlock()
 }
 
-// Keys
-func (l *List) Keys() (keys []string) {
-	l.Range(0, -1, func(key string) bool {
-		keys = append(keys, key)
-		return false
-	})
-	return
+type binListPack struct {
+	E EncodeType
+	N uint16
+	D []byte
 }
 
-// Marshal
-func (l *List) Marshal() []byte {
-	buf := bpool.Get(maxListPackSize)[:0]
+// MarshalJSON
+func (l *QuickList) MarshalJSON() ([]byte, error) {
+	data := make([]binListPack, 0)
 	l.mu.RLock()
+	defer l.mu.RUnlock()
+
 	for cur := l.head; cur != nil; cur = cur.next {
-		buf = append(buf, cur.data...)
+		data = append(data, binListPack{
+			E: cur.encode,
+			N: cur.size,
+			D: cur.data,
+		})
 	}
-	l.mu.RUnlock()
-	return buf
+	return sonic.Marshal(data)
 }
 
-// Unmarshal requires an initialized List.
-func (l *List) Unmarshal(src []byte) error {
+// UnmarshalJSON
+func (l *QuickList) UnmarshalJSON(src []byte) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	var index int
-	for index < len(src) {
-		// klen
-		klen, n := binary.Uvarint(src[index:])
-		index += n
-		// key
-		key := src[index : index+int(klen)]
-		l.rpush(string(key))
-		index += int(klen)
+	var data []binListPack
+	if err := sonic.Unmarshal(src, &data); err != nil {
+		return err
 	}
+
+	var last *ListPack
+	for _, item := range data {
+		lp := &ListPack{
+			encode: item.E,
+			size:   item.N,
+			data:   item.D,
+			prev:   last,
+		}
+		if last != nil {
+			last.next = lp
+		}
+		if l.head == nil {
+			l.head = lp
+		}
+		l.tail = lp
+		last = lp
+	}
+
 	return nil
 }

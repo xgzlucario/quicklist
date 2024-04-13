@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func genList(start, end int) *List {
-	lp := NewList()
+func genList(start, end int) *QuickList {
+	lp := New()
 	for i := start; i < end; i++ {
 		lp.RPush(genKey(i))
 	}
@@ -23,14 +23,14 @@ func TestList(t *testing.T) {
 	SetEachNodeMaxSize(128)
 
 	t.Run("rpush", func(t *testing.T) {
-		ls := NewList()
+		ls := New()
 		for i := 0; i < N; i++ {
 			assert.Equal(ls.Size(), i)
-			ls.RPush(fmt.Sprintf("%08d", i))
+			ls.RPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			v, ok := ls.Index(i)
-			assert.Equal(fmt.Sprintf("%08d", i), v)
+			assert.Equal(genKey(i), v)
 			assert.True(ok)
 		}
 		// check each node length
@@ -40,14 +40,14 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("lpush", func(t *testing.T) {
-		ls := NewList()
+		ls := New()
 		for i := 0; i < N; i++ {
 			assert.Equal(ls.Size(), i)
-			ls.LPush(fmt.Sprintf("%08d", i))
+			ls.LPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			v, ok := ls.Index(N - 1 - i)
-			assert.Equal(fmt.Sprintf("%08d", i), v)
+			assert.Equal(genKey(i), v)
 			assert.True(ok)
 		}
 		// check each node length
@@ -61,7 +61,7 @@ func TestList(t *testing.T) {
 		for i := 0; i < N; i++ {
 			assert.Equal(ls.Size(), N-i)
 			key, ok := ls.LPop()
-			assert.Equal(key, fmt.Sprintf("%08d", i))
+			assert.Equal(key, genKey(i))
 			assert.True(ok)
 		}
 		// pop empty list
@@ -77,7 +77,7 @@ func TestList(t *testing.T) {
 		for i := 0; i < N; i++ {
 			assert.Equal(ls.Size(), N-i)
 			key, ok := ls.RPop()
-			assert.Equal(key, fmt.Sprintf("%08d", N-i-1))
+			assert.Equal(key, genKey(N-i-1))
 			assert.True(ok)
 		}
 		// pop empty list
@@ -89,19 +89,18 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("len", func(t *testing.T) {
-		ls := NewList()
+		ls := New()
 		for i := 0; i < N; i++ {
-			ls.RPush(fmt.Sprintf("%08d", i))
+			ls.RPush(genKey(i))
 			assert.Equal(ls.Size(), i+1)
-			assert.Equal(len(ls.Keys()), i+1)
 		}
 	})
 
 	// t.Run("set", func(t *testing.T) {
-	// 	ls := NewList()
+	// 	ls := New()
 	// 	vls := make([]string, 0)
 	// 	for i := 0; i < N; i++ {
-	// 		k := fmt.Sprintf("%08d", i)
+	// 		k := genKey(i)
 	// 		ls.RPush(k)
 	// 		vls = append(vls, k)
 	// 	}
@@ -113,26 +112,24 @@ func TestList(t *testing.T) {
 	// 	assert.Equal(ls.Keys(), vls)
 	// })
 
-	// t.Run("marshal", func(t *testing.T) {
-	// 	ls := NewList()
-	// 	for i := 0; i < N; i++ {
-	// 		ls.RPush(fmt.Sprintf("%08d", i))
-	// 	}
-	// 	data := ls.Marshal()
+	t.Run("marshal", func(t *testing.T) {
+		ls := genList(0, N)
+		data, err := ls.MarshalJSON()
+		assert.Nil(err)
 
-	// 	ls2 := NewList()
-	// 	err := ls2.Unmarshal(data)
-	// 	assert.Nil(err)
+		ls2 := New()
+		err = ls2.UnmarshalJSON(data)
+		assert.Nil(err)
 
-	// 	for i := 0; i < N; i++ {
-	// 		v, ok := ls.Index(i)
-	// 		assert.Equal(fmt.Sprintf("%08d", i), v)
-	// 		assert.True(ok)
-	// 	}
-	// })
+		for i := 0; i < N; i++ {
+			v, ok := ls.Index(i)
+			assert.Equal(genKey(i), v)
+			assert.True(ok)
+		}
+	})
 
 	t.Run("range", func(t *testing.T) {
-		ls := NewList()
+		ls := New()
 		ls.Range(1, 2, func(s string) (stop bool) {
 			panic("should not call")
 		})
@@ -156,7 +153,7 @@ func TestList(t *testing.T) {
 }
 
 func FuzzList(f *testing.F) {
-	ls := NewList()
+	ls := New()
 	vls := make([]string, 0, 4096)
 
 	f.Fuzz(func(t *testing.T, key string) {
@@ -248,7 +245,7 @@ func FuzzList(f *testing.F) {
 		// Marshal
 		case 14:
 			// data := ls.Marshal()
-			// nls := NewList()
+			// nls := New()
 			// err := nls.Unmarshal(data)
 			// assert.Nil(err)
 
