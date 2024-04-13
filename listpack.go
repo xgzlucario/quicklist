@@ -30,7 +30,7 @@ const (
 	+--------+--------+-----+--------+
 	| entry0 | entry1 | ... | entryN |
 	+--------+--------+-----+--------+
-		|
+        |
 	  entry0 content:
 	+------------+--------------+---------------------+
 	|  data_len  |     data     |      entry_len      |
@@ -100,12 +100,12 @@ func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 	var index int
 	for i := 0; i < end; i++ {
 		//
-		//	  index     dataStartPos    dataEndPos            indexNext
-		//	    |            |              |                     |
-		//		+------------+--------------+---------------------+-----+
+		//    index     dataStartPos    dataEndPos            indexNext
+		//      |            |              |                     |
+		//      +------------+--------------+---------------------+-----+
 		//  --> |  data_len  |     data     |      entry_len      | ... |
-		//		+------------+--------------+---------------------+-----+
-		//		|<--- n ---->|<- data_len ->|<-- size_entry_len ->|
+		//      +------------+--------------+---------------------+-----+
+		//      |<--- n ---->|<- data_len ->|<-- size_entry_len ->|
 		//
 		dataLen, n := binary.Uvarint(lp.data[index:])
 		dataStartPos := index + n
@@ -127,7 +127,7 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 	var index = len(lp.data)
 	for i := 0; i < end; i++ {
 		//
-		//	  indexNext  dataStartPos    dataEndPos               index
+		//    indexNext  dataStartPos    dataEndPos               index
 		//        |            |              |                     |
 		//  +-----+------------+--------------+---------------------+
 		//  | ... |  data_len  |     data     |      entry_len      | <--
