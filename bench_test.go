@@ -2,7 +2,6 @@ package quicklist
 
 import (
 	"fmt"
-	"math/rand/v2"
 	"testing"
 )
 
@@ -90,13 +89,4 @@ func BenchmarkListPack(b *testing.B) {
 			ls.Set(i%N, fmt.Sprintf("%09x", i))
 		}
 	})
-	for _, r := range []float64{0.3, 0.35, 0.4, 0.45, 0.5} {
-		b.Run(fmt.Sprintf("find_%.2f", r), func(b *testing.B) {
-			ls := genListPack(0, N)
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				ls.findWithRate(r, rand.IntN(N), func(_ []byte, _, _ int) {})
-			}
-		})
-	}
 }

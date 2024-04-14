@@ -161,12 +161,14 @@ func (lp *ListPack) RevRange(start, end int, f func([]byte) (stop bool)) {
 	})
 }
 
-// for test only
-func (lp *ListPack) findWithRate(rate float64, index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
+// find quickly locates the element based on index.
+// When the target index is in the first half, use forward traversal;
+// otherwise, use reverse traversal.
+func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
 	if lp.size == 0 || index >= lp.Size() {
 		return
 	}
-	if float64(index) < float64(lp.size)*rate {
+	if index <= lp.Size()/2 {
 		lp.iterFront(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
 			fn(old, entryStartPos, entryEndPos)
 			return true
@@ -178,14 +180,6 @@ func (lp *ListPack) findWithRate(rate float64, index int, fn func(old []byte, en
 			return true
 		})
 	}
-}
-
-// find quickly locates the element based on index.
-// When the target index is in the first half, use forward traversal;
-// otherwise, use reverse traversal.
-// default threshold is `0.4`.
-func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
-	lp.findWithRate(0.4, index, fn)
 }
 
 func (lp *ListPack) Set(i int, data string) (ok bool) {
