@@ -6,6 +6,7 @@ import (
 )
 
 func BenchmarkList(b *testing.B) {
+	const N = 10000
 	b.Run("lpush", func(b *testing.B) {
 		ls := New()
 		for i := 0; i < b.N; i++ {
@@ -33,21 +34,21 @@ func BenchmarkList(b *testing.B) {
 		}
 	})
 	b.Run("index", func(b *testing.B) {
-		ls := genList(0, 10000)
+		ls := genList(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.Index(i % 10000)
+			ls.Index(i % N)
 		}
 	})
 	b.Run("set", func(b *testing.B) {
-		ls := genList(0, 10000)
+		ls := genList(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.Set(i%10000, genKey(10000-i))
+			ls.Set(i%N, genKey(N-i))
 		}
 	})
 	b.Run("range", func(b *testing.B) {
-		ls := genList(0, 10000)
+		ls := genList(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ls.Range(0, -1, func(s []byte) (stop bool) {
@@ -56,7 +57,7 @@ func BenchmarkList(b *testing.B) {
 		}
 	})
 	b.Run("revrange", func(b *testing.B) {
-		ls := genList(0, 10000)
+		ls := genList(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ls.RevRange(0, -1, func(s []byte) (stop bool) {

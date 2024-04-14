@@ -114,10 +114,12 @@ func TestListPack(t *testing.T) {
 	t.Run("remove", func(t *testing.T) {
 		lp := genListPack(0, N)
 
-		ok := lp.Remove(N)
+		val, ok := lp.Remove(N)
+		assert.Equal(val, "")
 		assert.False(ok)
 
-		ok = lp.Remove(0)
+		val, ok = lp.Remove(0)
+		assert.Equal(val, genKey(0))
 		assert.True(ok)
 
 		res, ok := lp.LPop()

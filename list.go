@@ -28,47 +28,47 @@ func New() *QuickList {
 	return &QuickList{head: lp, tail: lp}
 }
 
-func (l *QuickList) lpush(key string) {
-	if len(l.head.data)+len(key) >= maxListPackSize {
+func (ls *QuickList) lpush(key string) {
+	if len(ls.head.data)+len(key) >= maxListPackSize {
 		lp := NewListPack()
-		lp.next = l.head
-		l.head.prev = lp
-		l.head = lp
+		lp.next = ls.head
+		ls.head.prev = lp
+		ls.head = lp
 	}
-	l.head.LPush(key)
+	ls.head.LPush(key)
 }
 
 // LPush
-func (l *QuickList) LPush(keys ...string) {
-	l.mu.Lock()
+func (ls *QuickList) LPush(keys ...string) {
+	ls.mu.Lock()
 	for _, k := range keys {
-		l.lpush(k)
+		ls.lpush(k)
 	}
-	l.mu.Unlock()
+	ls.mu.Unlock()
 }
 
-func (l *QuickList) rpush(key string) {
-	if len(l.tail.data)+len(key) >= maxListPackSize {
+func (ls *QuickList) rpush(key string) {
+	if len(ls.tail.data)+len(key) >= maxListPackSize {
 		lp := NewListPack()
-		l.tail.next = lp
-		lp.prev = l.tail
-		l.tail = lp
+		ls.tail.next = lp
+		lp.prev = ls.tail
+		ls.tail = lp
 	}
-	l.tail.RPush(key)
+	ls.tail.RPush(key)
 }
 
 // RPush
-func (l *QuickList) RPush(keys ...string) {
-	l.mu.Lock()
+func (ls *QuickList) RPush(keys ...string) {
+	ls.mu.Lock()
 	for _, k := range keys {
-		l.rpush(k)
+		ls.rpush(k)
 	}
-	l.mu.Unlock()
+	ls.mu.Unlock()
 }
 
 // Index
-func (l *QuickList) Index(i int) (val string, ok bool) {
-	l.Range(i, i+1, func(key []byte) bool {
+func (ls *QuickList) Index(i int) (val string, ok bool) {
+	ls.Range(i, i+1, func(key []byte) bool {
 		val, ok = string(key), true
 		return true
 	})
@@ -76,70 +76,96 @@ func (l *QuickList) Index(i int) (val string, ok bool) {
 }
 
 // LPop
-func (l *QuickList) LPop() (key string, ok bool) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// remove empty head node
-	for l.head.size == 0 {
-		if l.head.next == nil {
-			return
-		}
-		bpool.Put(l.head.data)
-		l.head = l.head.next
-		l.head.prev = nil
-	}
-
-	return l.head.LPop()
+func (ls *QuickList) LPop() (string, bool) {
+	return ls.Remove(0)
 }
 
 // RPop
-func (l *QuickList) RPop() (key string, ok bool) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+func (ls *QuickList) RPop() (key string, ok bool) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
 
-	// remove empty tail node
-	for l.tail.size == 0 {
-		if l.tail.prev == nil {
-			return
+	for lp := ls.tail; lp != nil; lp = lp.prev {
+		if lp.size > 0 {
+			return lp.RPop()
 		}
-		bpool.Put(l.tail.data)
-		l.tail = l.tail.prev
-		l.tail.next = nil
+		ls.free(lp)
 	}
-
-	return l.tail.RPop()
-}
-
-// Set
-func (l *QuickList) Set(index int, key string) (ok bool) {
-	l.mu.Lock()
-	cur := l.head
-	for index >= cur.Size() {
-		index -= cur.Size()
-		cur = cur.next
-		if cur == nil {
-			return
-		}
-	}
-	ok = cur.Set(index, key)
-	l.mu.Unlock()
 	return
 }
 
-// Size
-func (l *QuickList) Size() (n int) {
-	l.mu.RLock()
-	for cur := l.head; cur != nil; cur = cur.next {
-		n += cur.Size()
+// free release empty listpack.
+func (ls *QuickList) free(lp *ListPack) {
+	if lp.size == 0 && lp.prev != nil && lp.next != nil {
+		lp.prev.next = lp.next
+		lp.next.prev = lp.prev
+		bpool.Put(lp.data)
+		lp = nil
 	}
-	l.mu.RUnlock()
+}
+
+// find quickly locates `listpack` and it `indexInternal` based on index.
+func (ls *QuickList) find(index int) (*ListPack, int) {
+	var lp *ListPack
+	for lp = ls.head; lp != nil && index >= lp.Size(); lp = lp.next {
+		index -= lp.Size()
+	}
+	return lp, index
+}
+
+// Set
+func (ls *QuickList) Set(index int, key string) bool {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+
+	lp, indexInternal := ls.find(index)
+	if lp != nil {
+		return lp.Set(indexInternal, key)
+	}
+	return false
+}
+
+// Remove
+func (ls *QuickList) Remove(index int) (val string, ok bool) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+
+	lp, indexInternal := ls.find(index)
+	if lp != nil {
+		val, ok = lp.Remove(indexInternal)
+		ls.free(lp)
+	}
+	return
+}
+
+// RemoveFirst
+func (ls *QuickList) RemoveFirst(key string) bool {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+
+	for lp := ls.head; lp != nil; lp = lp.next {
+		if lp.size == 0 {
+			ls.free(lp)
+		} else if lp.RemoveElem(key) {
+			return true
+		}
+	}
+	return false
+}
+
+// Size
+func (ls *QuickList) Size() (n int) {
+	ls.mu.RLock()
+	for lp := ls.head; lp != nil; lp = lp.next {
+		n += lp.Size()
+	}
+	ls.mu.RUnlock()
 	return
 }
 
 type lsIterator func(data []byte) (stop bool)
 
-func (l *QuickList) iterFront(start, end int, f lsIterator) {
+func (ls *QuickList) iterFront(start, end int, f lsIterator) {
 	count := end - start
 	if end == -1 {
 		count = math.MaxInt
@@ -148,28 +174,21 @@ func (l *QuickList) iterFront(start, end int, f lsIterator) {
 		return
 	}
 
-	cur := l.head
-	for start > cur.Size() {
-		start -= cur.Size()
-		cur = cur.next
-		if cur == nil {
-			return
-		}
-	}
+	lp, indexInternal := ls.find(start)
 
 	var stop bool
-	for !stop && count > 0 && cur != nil {
-		cur.Range(start, -1, func(data []byte) bool {
+	for !stop && count > 0 && lp != nil {
+		lp.iterFront(indexInternal, -1, func(data []byte, _, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0
 		})
-		cur = cur.next
-		start = 0
+		lp = lp.next
+		indexInternal = 0
 	}
 }
 
-func (l *QuickList) iterBack(start, end int, f lsIterator) {
+func (ls *QuickList) iterBack(start, end int, f lsIterator) {
 	count := end - start
 	if end == -1 {
 		count = math.MaxInt
@@ -178,39 +197,39 @@ func (l *QuickList) iterBack(start, end int, f lsIterator) {
 		return
 	}
 
-	cur := l.tail
-	for start > cur.Size() {
-		start -= cur.Size()
-		cur = cur.prev
-		if cur == nil {
+	lp := ls.tail
+	for start > lp.Size() {
+		start -= lp.Size()
+		lp = lp.prev
+		if lp == nil {
 			return
 		}
 	}
 
 	var stop bool
-	for !stop && count > 0 && cur != nil {
-		cur.RevRange(start, -1, func(data []byte) bool {
+	for !stop && count > 0 && lp != nil {
+		lp.iterBack(start, -1, func(data []byte, _, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0
 		})
-		cur = cur.prev
+		lp = lp.prev
 		start = 0
 	}
 }
 
 // Range
-func (l *QuickList) Range(start, end int, f lsIterator) {
-	l.mu.RLock()
-	l.iterFront(start, end, f)
-	l.mu.RUnlock()
+func (ls *QuickList) Range(start, end int, f lsIterator) {
+	ls.mu.RLock()
+	ls.iterFront(start, end, f)
+	ls.mu.RUnlock()
 }
 
 // RevRange
-func (l *QuickList) RevRange(start, end int, f lsIterator) {
-	l.mu.RLock()
-	l.iterBack(start, end, f)
-	l.mu.RUnlock()
+func (ls *QuickList) RevRange(start, end int, f lsIterator) {
+	ls.mu.RLock()
+	ls.iterBack(start, end, f)
+	ls.mu.RUnlock()
 }
 
 type binListPack struct {
@@ -220,25 +239,25 @@ type binListPack struct {
 }
 
 // MarshalJSON
-func (l *QuickList) MarshalJSON() ([]byte, error) {
+func (ls *QuickList) MarshalJSON() ([]byte, error) {
 	data := make([]binListPack, 0)
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
 
-	for cur := l.head; cur != nil; cur = cur.next {
+	for lp := ls.head; lp != nil; lp = lp.next {
 		data = append(data, binListPack{
-			E: cur.encode,
-			N: cur.size,
-			D: cur.data,
+			E: lp.encode,
+			N: lp.size,
+			D: lp.data,
 		})
 	}
 	return sonic.Marshal(data)
 }
 
 // UnmarshalJSON
-func (l *QuickList) UnmarshalJSON(src []byte) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+func (ls *QuickList) UnmarshalJSON(src []byte) error {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
 
 	var data []binListPack
 	if err := sonic.Unmarshal(src, &data); err != nil {
@@ -256,10 +275,10 @@ func (l *QuickList) UnmarshalJSON(src []byte) error {
 		if last != nil {
 			last.next = lp
 		}
-		if l.head == nil {
-			l.head = lp
+		if ls.head == nil {
+			ls.head = lp
 		}
-		l.tail = lp
+		ls.tail = lp
 		last = lp
 	}
 

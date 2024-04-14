@@ -65,11 +65,9 @@ func TestList(t *testing.T) {
 			assert.True(ok)
 		}
 		// pop empty list
-		for i := 0; i < N; i++ {
-			key, ok := ls.LPop()
-			assert.Equal(key, "")
-			assert.False(ok)
-		}
+		key, ok := ls.LPop()
+		assert.Equal(key, "")
+		assert.False(ok)
 	})
 
 	t.Run("rpop", func(t *testing.T) {
@@ -81,11 +79,9 @@ func TestList(t *testing.T) {
 			assert.True(ok)
 		}
 		// pop empty list
-		for i := 0; i < N; i++ {
-			key, ok := ls.RPop()
-			assert.Equal(key, "")
-			assert.False(ok)
-		}
+		key, ok := ls.RPop()
+		assert.Equal(key, "")
+		assert.False(ok)
 	})
 
 	t.Run("len", func(t *testing.T) {
@@ -101,7 +97,7 @@ func TestList(t *testing.T) {
 		for i := 0; i < N; i++ {
 			newK := fmt.Sprintf("newkk-%x", i)
 			ok := ls.Set(i, newK)
-			assert.True(ok, i)
+			assert.True(ok)
 		}
 		var count int
 		ls.Range(0, -1, func(b []byte) bool {
@@ -114,6 +110,49 @@ func TestList(t *testing.T) {
 
 		ok := ls.Set(N+1, "new")
 		assert.False(ok)
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		ls := genList(0, N)
+		for i := 0; i < N-1; i++ {
+			val, ok := ls.Remove(0)
+			assert.Equal(val, genKey(i))
+			assert.True(ok)
+
+			val, ok = ls.Index(0)
+			assert.Equal(val, genKey(i+1))
+			assert.True(ok)
+		}
+
+		assert.Equal(ls.head.Size(), 0)
+		// only has 2 nodes.
+		assert.Equal(ls.head.next, ls.tail)
+		assert.Equal(ls.tail.Size(), 1)
+
+		val, ok := ls.tail.RPop()
+		assert.Equal(val, genKey(N-1))
+		assert.True(ok)
+	})
+
+	t.Run("removeFirst", func(t *testing.T) {
+		ls := genList(0, N)
+		for i := 0; i < N-1; i++ {
+			ok := ls.RemoveFirst(genKey(i))
+			assert.True(ok)
+
+			val, ok := ls.Index(0)
+			assert.Equal(val, genKey(i+1))
+			assert.True(ok)
+		}
+
+		assert.Equal(ls.head.Size(), 0)
+		// only has 2 nodes.
+		assert.Equal(ls.head.next, ls.tail)
+		assert.Equal(ls.tail.Size(), 1)
+
+		val, ok := ls.tail.RPop()
+		assert.Equal(val, genKey(N-1))
+		assert.True(ok)
 	})
 
 	t.Run("marshal", func(t *testing.T) {
@@ -245,15 +284,15 @@ func FuzzList(f *testing.F) {
 				assert.True(ok)
 			}
 
-		// Delete
+		// Remove
 		case 12:
-			// if len(vls) > 0 {
-			// index := rand.IntN(len(vls))
-			// val, ok := ls.Delete(index)
-			// assert.Equal(val, vls[index])
-			// assert.True(ok)
-			// vls = append(vls[:index], vls[index+1:]...)
-			// }
+			if len(vls) > 0 {
+				index := rand.IntN(len(vls))
+				val, ok := ls.Remove(index)
+				assert.Equal(val, vls[index])
+				assert.True(ok)
+				vls = append(vls[:index], vls[index+1:]...)
+			}
 
 		// Range
 		case 13:

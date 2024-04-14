@@ -31,7 +31,7 @@ const (
 	+--------+--------+-----+--------+
 	| entry0 | entry1 | ... | entryN |
 	+--------+--------+-----+--------+
-		|
+	    |
 	  entry0 content:
 	+------------+--------------+---------------------+
 	|  data_len  |     data     |      entry_len      |
@@ -68,22 +68,12 @@ func (lp *ListPack) LPush(data string) {
 	bpool.Put(entry)
 }
 
-func (lp *ListPack) RPop() (res string, ok bool) {
-	lp.find(lp.Size()-1, func(data []byte, entryStartPos, _ int) {
-		res, ok = string(data), true
-		lp.data = lp.data[:entryStartPos]
-		lp.size--
-	})
-	return
+func (lp *ListPack) RPop() (string, bool) {
+	return lp.Remove(lp.Size() - 1)
 }
 
 func (lp *ListPack) LPop() (res string, ok bool) {
-	lp.find(0, func(data []byte, _, entryEndPos int) {
-		res, ok = string(data), true
-		lp.data = slices.Delete(lp.data, 0, entryEndPos)
-		lp.size--
-	})
-	return
+	return lp.Remove(0)
 }
 
 func (lp *ListPack) Size() int {
@@ -149,18 +139,6 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 	}
 }
 
-func (lp *ListPack) Range(start, end int, f func([]byte) (stop bool)) {
-	lp.iterFront(start, end, func(data []byte, _, _ int) bool {
-		return f(data)
-	})
-}
-
-func (lp *ListPack) RevRange(start, end int, f func([]byte) (stop bool)) {
-	lp.iterBack(start, end, func(data []byte, _, _ int) bool {
-		return f(data)
-	})
-}
-
 // find quickly locates the element based on index.
 // When the target index is in the first half, use forward traversal;
 // otherwise, use reverse traversal.
@@ -182,8 +160,8 @@ func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndP
 	}
 }
 
-func (lp *ListPack) Set(i int, data string) (ok bool) {
-	lp.find(i, func(old []byte, entryStartPos, entryEndPos int) {
+func (lp *ListPack) Set(index int, data string) (ok bool) {
+	lp.find(index, func(old []byte, entryStartPos, entryEndPos int) {
 		if len(data) == len(old) {
 			copy(old, data)
 		} else {
@@ -196,8 +174,9 @@ func (lp *ListPack) Set(i int, data string) (ok bool) {
 	return
 }
 
-func (lp *ListPack) Remove(i int) (ok bool) {
-	lp.find(i, func(_ []byte, entryStartPos, entryEndPos int) {
+func (lp *ListPack) Remove(index int) (val string, ok bool) {
+	lp.find(index, func(data []byte, entryStartPos, entryEndPos int) {
+		val = string(data)
 		lp.data = slices.Delete(lp.data, entryStartPos, entryEndPos)
 		lp.size--
 		ok = true
