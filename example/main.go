@@ -48,4 +48,7 @@ func main() {
 		// do something
 		return false
 	})
+
+	// Remove
+	fmt.Println(ls.Remove(1)) // 00002, true
 }

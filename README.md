@@ -57,6 +57,9 @@ func main() {
 		// do something
 		return false
 	})
+
+	// Remove
+	fmt.Println(ls.Remove(1)) // 00002, true
 }
 ```
 
@@ -67,17 +70,14 @@ goos: linux
 goarch: amd64
 pkg: github.com/xgzlucario/quicklist
 cpu: 13th Gen Intel(R) Core(TM) i5-13600KF
-BenchmarkList/lpush-20           6714782             177.5 ns/op            81 B/op          4 allocs/op
-BenchmarkList/rpush-20           9673924             122.9 ns/op            57 B/op          3 allocs/op
-BenchmarkList/lpop-20           33424344             36.82 ns/op            12 B/op          1 allocs/op
-BenchmarkList/rpop-20           34043060             35.22 ns/op            11 B/op          1 allocs/op
-BenchmarkList/index-20           2519694             478.2 ns/op             8 B/op          1 allocs/op
-BenchmarkList/set-20             2319103             520.9 ns/op            16 B/op          1 allocs/op
-BenchmarkList/range-20             26865             44864 ns/op             0 B/op          0 allocs/op
-BenchmarkList/revrange-20                  23131           52130 ns/op               0 B/op          0 allocs/op
-BenchmarkListPack/set/same-len-20        1000000            1009 ns/op              16 B/op          1 allocs/op
-BenchmarkListPack/set/less-len-20        1000000            1011 ns/op              16 B/op          2 allocs/op
-BenchmarkListPack/set/great-len-20       1000000            1020 ns/op              24 B/op          2 allocs/op
+BenchmarkList/lpush-20           6919466            172.2 ns/op           81 B/op          4 allocs/op
+BenchmarkList/rpush-20           9818408            121.2 ns/op           57 B/op          3 allocs/op
+BenchmarkList/lpop-20           30589072            38.24 ns/op           12 B/op          1 allocs/op
+BenchmarkList/rpop-20           29978404            38.86 ns/op           11 B/op          1 allocs/op
+BenchmarkList/index-20           2562333            465.2 ns/op            8 B/op          1 allocs/op
+BenchmarkList/set-20             2256325            519.2 ns/op           16 B/op          1 allocs/op
+BenchmarkList/range-20             26914            44811 ns/op            0 B/op          0 allocs/op
+BenchmarkList/revrange-20          23872            49361 ns/op            0 B/op          0 allocs/op
 PASS
 ok      github.com/xgzlucario/quicklist 23.947s
 ```
@@ -95,11 +95,11 @@ cost: 1.974449294s
 
 quicklist
 entries: 20000000
-alloc: 261 mb
+alloc: 269 mb
 gcsys: 8 mb
-heap inuse: 262 mb
-heap object: 3589 k
+heap inuse: 271 mb
+heap object: 4004 k
 gc: 27
-pause: 1.492172ms
-cost: 2.320623234s
+pause: 1.109658ms
+cost: 2.210220362s
 ```
