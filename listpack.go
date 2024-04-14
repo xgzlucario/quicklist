@@ -31,7 +31,7 @@ const (
 	+--------+--------+-----+--------+
 	| entry0 | entry1 | ... | entryN |
 	+--------+--------+-----+--------+
-        |
+		|
 	  entry0 content:
 	+------------+--------------+---------------------+
 	|  data_len  |     data     |      entry_len      |
@@ -69,21 +69,19 @@ func (lp *ListPack) LPush(data string) {
 }
 
 func (lp *ListPack) RPop() (res string, ok bool) {
-	lp.iterBack(0, 1, func(data []byte, entryStartPos, _ int) bool {
+	lp.find(lp.Size()-1, func(data []byte, entryStartPos, _ int) {
 		res, ok = string(data), true
 		lp.data = lp.data[:entryStartPos]
 		lp.size--
-		return true
 	})
 	return
 }
 
 func (lp *ListPack) LPop() (res string, ok bool) {
-	lp.iterFront(0, 1, func(data []byte, _, entryEndPos int) bool {
+	lp.find(0, func(data []byte, _, entryEndPos int) {
 		res, ok = string(data), true
 		lp.data = slices.Delete(lp.data, 0, entryEndPos)
 		lp.size--
-		return true
 	})
 	return
 }
@@ -92,6 +90,7 @@ func (lp *ListPack) Size() int {
 	return int(lp.size)
 }
 
+// lpIterator is listpack iterator.
 type lpIterator func(data []byte, entryStartPos, entryEndPos int) (stop bool)
 
 func (lp *ListPack) iterFront(start, end int, f lpIterator) {
@@ -162,14 +161,12 @@ func (lp *ListPack) RevRange(start, end int, f func([]byte) (stop bool)) {
 	})
 }
 
-// find quickly locates the element based on index.
-// When the target index is in the first half, use forward traversal;
-// otherwise, use reverse traversal.
-func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
+// for test only
+func (lp *ListPack) findWithRate(rate float64, index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
 	if lp.size == 0 || index >= lp.Size() {
 		return
 	}
-	if index <= lp.Size()/2 {
+	if float64(index) < float64(lp.size)*rate {
 		lp.iterFront(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
 			fn(old, entryStartPos, entryEndPos)
 			return true
@@ -181,6 +178,14 @@ func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndP
 			return true
 		})
 	}
+}
+
+// find quickly locates the element based on index.
+// When the target index is in the first half, use forward traversal;
+// otherwise, use reverse traversal.
+// default threshold is `0.4`.
+func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
+	lp.findWithRate(0.4, index, fn)
 }
 
 func (lp *ListPack) Set(i int, data string) (ok bool) {

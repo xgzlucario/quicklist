@@ -2,6 +2,7 @@ package quicklist
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
 )
 
@@ -67,25 +68,35 @@ func BenchmarkList(b *testing.B) {
 }
 
 func BenchmarkListPack(b *testing.B) {
+	const N = 1000
 	b.Run("set/same-len", func(b *testing.B) {
-		ls := genListPack(0, 1000)
+		ls := genListPack(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.Set(i%1000, fmt.Sprintf("%08x", i))
+			ls.Set(i%N, fmt.Sprintf("%08x", i))
 		}
 	})
 	b.Run("set/less-len", func(b *testing.B) {
-		ls := genListPack(0, 1000)
+		ls := genListPack(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.Set(i%1000, fmt.Sprintf("%07x", i))
+			ls.Set(i%N, fmt.Sprintf("%07x", i))
 		}
 	})
 	b.Run("set/great-len", func(b *testing.B) {
-		ls := genListPack(0, 1000)
+		ls := genListPack(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.Set(i%1000, fmt.Sprintf("%09x", i))
+			ls.Set(i%N, fmt.Sprintf("%09x", i))
 		}
 	})
+	for _, r := range []float64{0.3, 0.35, 0.4, 0.45, 0.5} {
+		b.Run(fmt.Sprintf("find_%.2f", r), func(b *testing.B) {
+			ls := genListPack(0, N)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				ls.findWithRate(r, rand.IntN(N), func(_ []byte, _, _ int) {})
+			}
+		})
+	}
 }
