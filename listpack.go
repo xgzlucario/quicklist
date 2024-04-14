@@ -1,6 +1,7 @@
 package quicklist
 
 import (
+	"bytes"
 	"encoding/binary"
 	"log"
 	"slices"
@@ -21,7 +22,7 @@ type EncodeType byte
 
 const (
 	EncodeRaw EncodeType = iota + 1
-	EncodeZstdCompressed
+	EncodeCompressed
 )
 
 // ListPack is a lists of strings serialization format on Redis.
@@ -80,7 +81,7 @@ func (lp *ListPack) RPop() (res string, ok bool) {
 func (lp *ListPack) LPop() (res string, ok bool) {
 	lp.iterFront(0, 1, func(data []byte, _, entryEndPos int) bool {
 		res, ok = string(data), true
-		lp.data = append(lp.data[:0], lp.data[entryEndPos:]...)
+		lp.data = slices.Delete(lp.data, 0, entryEndPos)
 		lp.size--
 		return true
 	})
@@ -161,8 +162,29 @@ func (lp *ListPack) RevRange(start, end int, f func([]byte) (stop bool)) {
 	})
 }
 
+// find quickly locates the element based on index.
+// When the target index is in the first half, use forward traversal;
+// otherwise, use reverse traversal.
+func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
+	if lp.size == 0 || index >= lp.Size() {
+		return
+	}
+	if index <= lp.Size()/2 {
+		lp.iterFront(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
+			fn(old, entryStartPos, entryEndPos)
+			return true
+		})
+	} else {
+		index = lp.Size() - index - 1
+		lp.iterBack(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
+			fn(old, entryStartPos, entryEndPos)
+			return true
+		})
+	}
+}
+
 func (lp *ListPack) Set(i int, data string) (ok bool) {
-	setFn := func(old []byte, entryStartPos, entryEndPos int) {
+	lp.find(i, func(old []byte, entryStartPos, entryEndPos int) {
 		if len(data) == len(old) {
 			copy(old, data)
 		} else {
@@ -171,22 +193,28 @@ func (lp *ListPack) Set(i int, data string) (ok bool) {
 			bpool.Put(alloc)
 		}
 		ok = true
-	}
+	})
+	return
+}
 
-	// When the target value is in the first half, use forward traversal;
-	// otherwise, use reverse traversal.
-	if i <= lp.Size()/2 {
-		lp.iterFront(i, i+1, func(old []byte, entryStartPos, entryEndPos int) bool {
-			setFn(old, entryStartPos, entryEndPos)
-			return true
-		})
-	} else {
-		i = lp.Size() - i - 1
-		lp.iterBack(i, i+1, func(old []byte, entryStartPos, entryEndPos int) bool {
-			setFn(old, entryStartPos, entryEndPos)
-			return true
-		})
-	}
+func (lp *ListPack) Remove(i int) (ok bool) {
+	lp.find(i, func(_ []byte, entryStartPos, entryEndPos int) {
+		lp.data = slices.Delete(lp.data, entryStartPos, entryEndPos)
+		lp.size--
+		ok = true
+	})
+	return
+}
+
+func (lp *ListPack) RemoveElem(data string) (ok bool) {
+	lp.iterFront(0, -1, func(old []byte, entryStartPos, entryEndPos int) bool {
+		if bytes.Equal(s2b(&data), old) {
+			lp.data = slices.Delete(lp.data, entryStartPos, entryEndPos)
+			lp.size--
+			ok = true
+		}
+		return ok
+	})
 	return
 }
 
@@ -197,7 +225,7 @@ func (lp *ListPack) Encode(encodeType EncodeType) error {
 	lp.encode = encodeType
 
 	switch encodeType {
-	case EncodeZstdCompressed:
+	case EncodeCompressed:
 		alloc := bpool.Get(maxListPackSize)[:0]
 		alloc = encoder.EncodeAll(lp.data, alloc)
 		bpool.Put(lp.data)
