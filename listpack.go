@@ -97,13 +97,16 @@ func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 		//      |<--- n ---->|<- data_len ->|<-- size_entry_len ->|
 		//
 		dataLen, n := binary.Uvarint(lp.data[index:])
-		dataStartPos := index + n
-		dataEndPos := dataStartPos + int(dataLen)
-		data := lp.data[dataStartPos:dataEndPos]
-		indexNext := dataEndPos + SizeUvarint(dataLen+uint64(n))
+		indexNext := index + n + int(dataLen) + +SizeUvarint(dataLen+uint64(n))
 
-		if i >= start && f(data, index, indexNext) {
-			return
+		if i >= start {
+			dataStartPos := index + n
+			dataEndPos := dataStartPos + int(dataLen)
+
+			data := lp.data[dataStartPos:dataEndPos]
+			if f(data, index, indexNext) {
+				return
+			}
 		}
 		index = indexNext
 	}
@@ -126,13 +129,16 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 		//
 		entryLen, sizeEntryLen := uvarintReverse(lp.data[:index])
 		indexNext := index - int(entryLen) - sizeEntryLen
-		dataLen, n := binary.Uvarint(lp.data[indexNext:])
-		dataStartPos := indexNext + n
-		dataEndPos := dataStartPos + int(dataLen)
-		data := lp.data[dataStartPos:dataEndPos]
 
-		if i >= start && f(data, indexNext, index) {
-			return
+		if i >= start {
+			dataLen, n := binary.Uvarint(lp.data[indexNext:])
+			dataStartPos := indexNext + n
+			dataEndPos := dataStartPos + int(dataLen)
+
+			data := lp.data[dataStartPos:dataEndPos]
+			if f(data, indexNext, index) {
+				return
+			}
 		}
 		index = indexNext
 	}
