@@ -3,14 +3,13 @@ package quicklist
 import (
 	"bytes"
 	"encoding/binary"
-	"log"
 	"slices"
 
 	"github.com/klauspost/compress/zstd"
 )
 
 var (
-	maxListPackSize = 8 * 1024
+	maxListPackSize = 32 * 1024
 
 	bpool = NewBufferPool()
 
@@ -43,7 +42,7 @@ const (
 */
 type ListPack struct {
 	encode     EncodeType
-	size       uint16
+	size       uint32
 	data       []byte
 	prev, next *ListPack
 }
@@ -51,7 +50,7 @@ type ListPack struct {
 func NewListPack() *ListPack {
 	return &ListPack{
 		encode: EncodeRaw,
-		data:   bpool.Get(maxListPackSize)[:0],
+		data:   make([]byte, 0, 16),
 	}
 }
 
@@ -72,7 +71,7 @@ func (lp *ListPack) RPop() (string, bool) {
 	return lp.Remove(lp.Size() - 1)
 }
 
-func (lp *ListPack) LPop() (res string, ok bool) {
+func (lp *ListPack) LPop() (string, bool) {
 	return lp.Remove(0)
 }
 
@@ -88,7 +87,7 @@ func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 		end = lp.Size()
 	}
 	var index int
-	for i := 0; i < end; i++ {
+	for i := 0; i < end && index < len(lp.data); i++ {
 		//
 		//    index     dataStartPos    dataEndPos            indexNext
 		//      |            |              |                     |
@@ -115,7 +114,7 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 		end = lp.Size()
 	}
 	var index = len(lp.data)
-	for i := 0; i < end; i++ {
+	for i := 0; i < end && index > 0; i++ {
 		//
 		//    indexNext  dataStartPos    dataEndPos               index
 		//        |            |              |                     |
@@ -184,6 +183,23 @@ func (lp *ListPack) Remove(index int) (val string, ok bool) {
 	return
 }
 
+func (lp *ListPack) RemoveRange(index, count int) (n int) {
+	var start, end int
+	var flag bool
+	lp.iterFront(index, index+count, func(_ []byte, entryStartPos, entryEndPos int) bool {
+		if !flag {
+			start = entryStartPos
+			flag = true
+		}
+		end = entryEndPos
+		n++
+		return false
+	})
+	lp.data = slices.Delete(lp.data, start, end)
+	lp.size -= uint32(n)
+	return
+}
+
 func (lp *ListPack) RemoveElem(data string) (ok bool) {
 	lp.iterFront(0, -1, func(old []byte, entryStartPos, entryEndPos int) bool {
 		if bytes.Equal(s2b(&data), old) {
@@ -223,9 +239,6 @@ func (lp *ListPack) Encode(encodeType EncodeType) error {
 
 // encode data to [data_len, data, entry_len].
 func appendEntry(dst []byte, data string) []byte {
-	if len(data) > maxListPackSize {
-		log.Printf("warning: data size is too large")
-	}
 	if dst == nil {
 		dst = bpool.Get(maxListPackSize)[:0]
 	}

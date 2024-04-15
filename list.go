@@ -138,6 +138,21 @@ func (ls *QuickList) Remove(index int) (val string, ok bool) {
 	return
 }
 
+// RemoveRange
+func (ls *QuickList) RemoveRange(index, count int) (n int) {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+
+	lp, indexInternal := ls.find(index)
+	for n < count && lp != nil {
+		n += lp.RemoveRange(indexInternal, count)
+		ls.free(lp)
+		indexInternal = 0
+		lp = lp.next
+	}
+	return
+}
+
 // RemoveFirst
 func (ls *QuickList) RemoveFirst(key string) bool {
 	ls.mu.Lock()
@@ -234,7 +249,7 @@ func (ls *QuickList) RevRange(start, end int, f lsIterator) {
 
 type binListPack struct {
 	E EncodeType
-	N uint16
+	N uint32
 	D []byte
 }
 

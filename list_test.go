@@ -136,6 +136,11 @@ func TestList(t *testing.T) {
 
 	t.Run("removeFirst", func(t *testing.T) {
 		ls := genList(0, N)
+
+		// remove not exist item.
+		ok := ls.RemoveFirst("none")
+		assert.False(ok)
+
 		for i := 0; i < N-1; i++ {
 			ok := ls.RemoveFirst(genKey(i))
 			assert.True(ok)
@@ -146,6 +151,7 @@ func TestList(t *testing.T) {
 		}
 
 		assert.Equal(ls.head.Size(), 0)
+
 		// only has 2 nodes.
 		assert.Equal(ls.head.next, ls.tail)
 		assert.Equal(ls.tail.Size(), 1)
@@ -153,6 +159,22 @@ func TestList(t *testing.T) {
 		val, ok := ls.tail.RPop()
 		assert.Equal(val, genKey(N-1))
 		assert.True(ok)
+	})
+
+	t.Run("removeRange", func(t *testing.T) {
+		ls := genList(0, N)
+
+		n := ls.RemoveRange(0, N)
+		assert.Equal(n, N)
+		assert.Equal(ls.head.Size(), 0)
+
+		val, ok := ls.Index(0)
+		assert.Equal(val, "")
+		assert.False(ok)
+
+		// only has 2 nodes.
+		assert.Equal(ls.head.next, ls.tail)
+		assert.Equal(ls.tail.Size(), 0)
 	})
 
 	t.Run("marshal", func(t *testing.T) {

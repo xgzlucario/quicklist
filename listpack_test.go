@@ -141,6 +141,27 @@ func TestListPack(t *testing.T) {
 		assert.True(ok)
 	})
 
+	t.Run("removeRange", func(t *testing.T) {
+		lp := genListPack(0, N)
+
+		// case1
+		n := lp.RemoveRange(0, N/2)
+		assert.Equal(n, N/2)
+
+		val, ok := lp.LPop()
+		assert.Equal(val, genKey(N/2))
+		assert.True(ok)
+
+		// case2
+		lp = genListPack(0, N)
+		n = lp.RemoveRange(N/2, N*2)
+		assert.Equal(n, N/2)
+
+		val, ok = lp.RPop()
+		assert.Equal(val, genKey(N/2-1))
+		assert.True(ok)
+	})
+
 	t.Run("comressed", func(t *testing.T) {
 		lp := genListPack(0, N)
 		sizeBefore := len(lp.data)
@@ -169,6 +190,12 @@ func TestListPack(t *testing.T) {
 			i++
 			return false
 		})
+
+		// decode error
+		lp = genListPack(0, N)
+		lp.encode = EncodeCompressed
+		err = lp.Encode(EncodeRaw)
+		assert.NotNil(err)
 	})
 
 	t.Run("set", func(t *testing.T) {
@@ -185,5 +212,8 @@ func TestListPack(t *testing.T) {
 			return false
 		})
 		assert.Equal(i, N)
+
+		ok := lp.Set(N+1, "newKey")
+		assert.False(ok)
 	})
 }
