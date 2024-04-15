@@ -21,7 +21,6 @@ func genKey(i int) string {
 
 func main() {
 	ls := quicklist.New()
-
 	// RPush
 	for i := 0; i < 100; i++ {
 		ls.RPush(genKey(i))
@@ -32,32 +31,25 @@ func main() {
 	}
 	// Len
 	fmt.Println("Len:", ls.Size()) // 200
-
 	// Index
 	val, ok := ls.Index(50)
 	fmt.Println("Index:", val, ok)
-
 	// Set
 	ok = ls.Set(0, "newValue")
 	fmt.Println("Set:", ok) // true
-
 	// LPop
 	val, ok = ls.LPop()
 	fmt.Println("LPop:", val, ok) // newValue, true
 	// RPop
 	val, ok = ls.RPop()
 	fmt.Println("RPop:", val, ok) // 00099, true
-
 	// Range
 	ls.Range(0, -1, func(s []byte) (stop bool) {
-		// do something
 		return false
 	})
 	ls.RevRange(0, -1, func(s []byte) (stop bool) {
-		// do something
 		return false
 	})
-
 	// Remove
 	fmt.Println(ls.Remove(1)) // 00002, true
 }
@@ -79,7 +71,6 @@ BenchmarkList/set-20             2256325            519.2 ns/op           16 B/o
 BenchmarkList/range-20             26914            44811 ns/op            0 B/op          0 allocs/op
 BenchmarkList/revrange-20          23872            49361 ns/op            0 B/op          0 allocs/op
 PASS
-ok      github.com/xgzlucario/quicklist 23.947s
 ```
 
 ```
@@ -103,3 +94,7 @@ gc: 27
 pause: 1.109658ms
 cost: 2.210220362s
 ```
+
+# Internal
+
+![quicklist](quicklist.png)
