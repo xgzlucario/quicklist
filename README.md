@@ -62,14 +62,14 @@ goos: linux
 goarch: amd64
 pkg: github.com/xgzlucario/quicklist
 cpu: 13th Gen Intel(R) Core(TM) i5-13600KF
-BenchmarkList/lpush-20           6919466            172.2 ns/op           81 B/op          4 allocs/op
-BenchmarkList/rpush-20           9818408            121.2 ns/op           57 B/op          3 allocs/op
-BenchmarkList/lpop-20           30589072            38.24 ns/op           12 B/op          1 allocs/op
-BenchmarkList/rpop-20           29978404            38.86 ns/op           11 B/op          1 allocs/op
-BenchmarkList/index-20           2562333            465.2 ns/op            8 B/op          1 allocs/op
-BenchmarkList/set-20             2256325            519.2 ns/op           16 B/op          1 allocs/op
-BenchmarkList/range-20             26914            44811 ns/op            0 B/op          0 allocs/op
-BenchmarkList/revrange-20          23872            49361 ns/op            0 B/op          0 allocs/op
+BenchmarkList/lpush-20           7022934           167.1 ns/op          78 B/op          4 allocs/op
+BenchmarkList/rpush-20           9819512           118.5 ns/op          54 B/op          3 allocs/op
+BenchmarkList/lpop-20           30589072           38.24 ns/op          12 B/op          1 allocs/op
+BenchmarkList/rpop-20           29978404           38.86 ns/op          11 B/op          1 allocs/op
+BenchmarkList/index-20           2562333           465.2 ns/op           8 B/op          1 allocs/op
+BenchmarkList/set-20             2256325           519.2 ns/op          16 B/op          1 allocs/op
+BenchmarkList/range-20             26914           44811 ns/op           0 B/op          0 allocs/op
+BenchmarkList/revrange-20          23872           49361 ns/op           0 B/op          0 allocs/op
 PASS
 ```
 

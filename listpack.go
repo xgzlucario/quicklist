@@ -4,24 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"slices"
-
-	"github.com/klauspost/compress/zstd"
 )
 
 var (
-	maxListPackSize = 32 * 1024
+	defaultListPackCap = 128
+
+	maxListPackSize = 1024 * 1024
 
 	bpool = NewBufferPool()
-
-	encoder, _ = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedFastest))
-	decoder, _ = zstd.NewReader(nil)
-)
-
-type EncodeType byte
-
-const (
-	EncodeRaw EncodeType = iota + 1
-	EncodeCompressed
 )
 
 // ListPack is a lists of strings serialization format on Redis.
@@ -41,17 +31,13 @@ const (
 	Using this structure, it is fast to iterate from both sides.
 */
 type ListPack struct {
-	encode     EncodeType
 	size       uint32
 	data       []byte
 	prev, next *ListPack
 }
 
 func NewListPack() *ListPack {
-	return &ListPack{
-		encode: EncodeRaw,
-		data:   make([]byte, 0, 16),
-	}
+	return &ListPack{data: make([]byte, 0, defaultListPackCap)}
 }
 
 func (lp *ListPack) RPush(data string) {
@@ -216,31 +202,6 @@ func (lp *ListPack) RemoveElem(data string) (ok bool) {
 		return ok
 	})
 	return
-}
-
-func (lp *ListPack) Encode(encodeType EncodeType) error {
-	if lp.encode == encodeType {
-		return nil
-	}
-	lp.encode = encodeType
-
-	switch encodeType {
-	case EncodeCompressed:
-		alloc := bpool.Get(maxListPackSize)[:0]
-		alloc = encoder.EncodeAll(lp.data, alloc)
-		bpool.Put(lp.data)
-		lp.data = alloc
-
-	case EncodeRaw:
-		alloc := bpool.Get(maxListPackSize)[:0]
-		alloc, err := decoder.DecodeAll(lp.data, alloc)
-		if err != nil {
-			return err
-		}
-		bpool.Put(lp.data)
-		lp.data = alloc
-	}
-	return nil
 }
 
 // encode data to [data_len, data, entry_len].

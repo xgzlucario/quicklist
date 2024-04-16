@@ -20,7 +20,7 @@ func genList(start, end int) *QuickList {
 func TestList(t *testing.T) {
 	assert := assert.New(t)
 	const N = 1000
-	SetEachNodeMaxSize(128)
+	SetMaxListPackSize(128)
 
 	t.Run("rpush", func(t *testing.T) {
 		ls := New()

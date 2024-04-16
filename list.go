@@ -18,8 +18,12 @@ type QuickList struct {
 	head, tail *ListPack
 }
 
-func SetEachNodeMaxSize(s int) {
+func SetMaxListPackSize(s int) {
 	maxListPackSize = s
+}
+
+func SetDefaultListPackCap(s int) {
+	defaultListPackCap = s
 }
 
 // New create a quicklist instance.
@@ -248,7 +252,6 @@ func (ls *QuickList) RevRange(start, end int, f lsIterator) {
 }
 
 type binListPack struct {
-	E EncodeType
 	N uint32
 	D []byte
 }
@@ -261,7 +264,6 @@ func (ls *QuickList) MarshalJSON() ([]byte, error) {
 
 	for lp := ls.head; lp != nil; lp = lp.next {
 		data = append(data, binListPack{
-			E: lp.encode,
 			N: lp.size,
 			D: lp.data,
 		})
@@ -282,10 +284,9 @@ func (ls *QuickList) UnmarshalJSON(src []byte) error {
 	var last *ListPack
 	for _, item := range data {
 		lp := &ListPack{
-			encode: item.E,
-			size:   item.N,
-			data:   item.D,
-			prev:   last,
+			size: item.N,
+			data: item.D,
+			prev: last,
 		}
 		if last != nil {
 			last.next = lp

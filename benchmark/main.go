@@ -47,6 +47,7 @@ func main() {
 		}()
 
 	case "quicklist":
+		quicklist.SetDefaultListPackCap(1024 * 1024)
 		ls := quicklist.New()
 		for i := 0; i < entries; i++ {
 			ls.RPush(genKey(i))

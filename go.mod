@@ -4,7 +4,6 @@ go 1.22
 
 require (
 	github.com/bytedance/sonic v1.11.3
-	github.com/klauspost/compress v1.17.8
 	github.com/stretchr/testify v1.9.0
 )
 

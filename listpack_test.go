@@ -162,42 +162,6 @@ func TestListPack(t *testing.T) {
 		assert.True(ok)
 	})
 
-	t.Run("comressed", func(t *testing.T) {
-		lp := genListPack(0, N)
-		sizeBefore := len(lp.data)
-
-		// encode same
-		assert.Nil(lp.Encode(EncodeRaw))
-
-		// compress
-		err := lp.Encode(EncodeCompressed)
-		assert.Nil(err)
-		sizeNow := len(lp.data)
-
-		assert.Less(sizeNow, sizeBefore)
-
-		// decompress
-		err = lp.Encode(EncodeRaw)
-		assert.Nil(err)
-		sizeNow = len(lp.data)
-
-		assert.Equal(sizeNow, sizeBefore)
-
-		// check
-		var i int
-		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
-			assert.Equal(string(data), genKey(i))
-			i++
-			return false
-		})
-
-		// decode error
-		lp = genListPack(0, N)
-		lp.encode = EncodeCompressed
-		err = lp.Encode(EncodeRaw)
-		assert.NotNil(err)
-	})
-
 	t.Run("set", func(t *testing.T) {
 		lp := genListPack(0, N)
 		for i := 0; i < N; i++ {
