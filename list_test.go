@@ -1,6 +1,7 @@
 package quicklist
 
 import (
+	"crypto/md5"
 	"fmt"
 	"math/rand/v2"
 	"strconv"
@@ -21,6 +22,7 @@ func TestList(t *testing.T) {
 	assert := assert.New(t)
 	const N = 1000
 	SetMaxListPackSize(128)
+	SetDefaultListPackCap(128)
 
 	t.Run("rpush", func(t *testing.T) {
 		ls := New()
@@ -191,6 +193,11 @@ func TestList(t *testing.T) {
 			assert.Equal(genKey(i), v)
 			assert.True(ok)
 		}
+
+		// unmarshal error
+		data = md5.New().Sum(data)
+		err = ls2.UnmarshalJSON(data)
+		assert.NotNil(err)
 	})
 
 	t.Run("range", func(t *testing.T) {

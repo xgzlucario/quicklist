@@ -282,7 +282,7 @@ func (ls *QuickList) UnmarshalJSON(src []byte) error {
 	}
 
 	var last *ListPack
-	for _, item := range data {
+	for i, item := range data {
 		lp := &ListPack{
 			size: item.N,
 			data: item.D,
@@ -291,7 +291,7 @@ func (ls *QuickList) UnmarshalJSON(src []byte) error {
 		if last != nil {
 			last.next = lp
 		}
-		if ls.head == nil {
+		if i == 0 {
 			ls.head = lp
 		}
 		ls.tail = lp
