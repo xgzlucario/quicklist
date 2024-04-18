@@ -325,31 +325,34 @@ func FuzzList(f *testing.F) {
 
 		// Range
 		case 13:
-			if len(vls) > 2 {
-				start := rand.IntN(len(vls) / 2)
-				end := len(vls)/2 + rand.IntN(len(vls)/2)
+			if len(vls) > 0 {
+				end := rand.IntN(len(vls))
+				if end == 0 {
+					return
+				}
+				start := rand.IntN(end)
 
-				keys := make([]string, 0, end-start)
-				ls.Range(start, end, func(s []byte) bool {
-					keys = append(keys, string(s))
+				var count int
+				ls.Range(start, end, func(data []byte) bool {
+					assert.Equal(b2s(data), vls[start+count])
+					count++
 					return false
 				})
-				assert.Equal(keys, vls[start:end], fmt.Sprintf("start: %v, end: %v", start, end))
 			}
 
-		// Marshal
+		// MarshalJSON
 		case 14:
-			// data := ls.Marshal()
-			// nls := New()
-			// err := nls.Unmarshal(data)
-			// assert.Nil(err)
+			data, _ := ls.MarshalJSON()
+			nls := New()
+			err := nls.UnmarshalJSON(data)
+			assert.Nil(err)
 
-			// assert.Equal(len(vls), nls.Size())
-			// if len(vls) == 0 {
-			// 	assert.Equal(vls, []string{})
-			// } else {
-			// 	assert.Equal(vls, nls.Keys())
-			// }
+			var i int
+			nls.Range(0, -1, func(data []byte) bool {
+				assert.Equal(b2s(data), vls[i])
+				i++
+				return false
+			})
 		}
 	})
 }

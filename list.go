@@ -258,11 +258,11 @@ type binListPack struct {
 
 // MarshalJSON
 func (ls *QuickList) MarshalJSON() ([]byte, error) {
-	data := make([]binListPack, 0)
+	data := make([]binListPack, 0, 8)
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
 
-	for lp := ls.head; lp != nil; lp = lp.next {
+	for lp := ls.head; lp != nil && lp.size > 0; lp = lp.next {
 		data = append(data, binListPack{
 			N: lp.size,
 			D: lp.data,

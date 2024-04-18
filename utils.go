@@ -54,3 +54,7 @@ func s2b(str *string) []byte {
 	}
 	return *(*[]byte)(unsafe.Pointer(&byteSliceHeader))
 }
+
+func b2s(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
