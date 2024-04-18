@@ -3,13 +3,14 @@ module github.com/xgzlucario/quicklist
 go 1.22
 
 require (
-	github.com/bytedance/sonic v1.11.3
+	github.com/bytedance/sonic v1.11.5
 	github.com/stretchr/testify v1.9.0
 )
 
 require (
-	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
-	github.com/chenzhuoyu/iasm v0.9.1 // indirect
+	github.com/bytedance/sonic/loader v0.1.1 // indirect
+	github.com/cloudwego/base64x v0.1.3 // indirect
+	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
