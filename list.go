@@ -1,10 +1,10 @@
 package quicklist
 
 import (
+	"encoding/binary"
+	"errors"
 	"math"
 	"sync"
-
-	"github.com/bytedance/sonic"
 )
 
 //	 +------------------------------ QuickList -----------------------------+
@@ -251,52 +251,63 @@ func (ls *QuickList) RevRange(start, end int, f lsIterator) {
 	ls.mu.RUnlock()
 }
 
-type binListPack struct {
-	N uint32
-	D []byte
-}
+var order = binary.LittleEndian
 
-// MarshalJSON
-func (ls *QuickList) MarshalJSON() ([]byte, error) {
-	data := make([]binListPack, 0, 8)
+// MarshalBinary
+func (ls *QuickList) MarshalBinary() ([]byte, error) {
+	data := bpool.Get(1024)[:0]
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
 
 	for lp := ls.head; lp != nil && lp.size > 0; lp = lp.next {
-		data = append(data, binListPack{
-			N: lp.size,
-			D: lp.data,
-		})
+		// append [size, len_data, data]
+		data = order.AppendUint32(data, lp.size)
+		data = order.AppendUint32(data, uint32(len(lp.data)))
+		data = append(data, lp.data...)
 	}
-	return sonic.Marshal(data)
+	return data, nil
 }
 
-// UnmarshalJSON
-func (ls *QuickList) UnmarshalJSON(src []byte) error {
+var ErrOutOfRange = errors.New("unmarshal error: index out of range")
+
+// UnmarshalBinary
+func (ls *QuickList) UnmarshalBinary(src []byte) error {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
-	var data []binListPack
-	if err := sonic.Unmarshal(src, &data); err != nil {
-		return err
-	}
-
+	ls.head = nil
 	var last *ListPack
-	for i, item := range data {
+
+	for index := 0; index < len(src); {
+		if len(src)-index < 8 {
+			return ErrOutOfRange
+		}
+		// size
+		size := order.Uint32(src[index:])
+		index += 4
+		// length
+		length := order.Uint32(src[index:])
+		index += 4
+		// data
+		if index+int(length) > len(src) {
+			return ErrOutOfRange
+		}
+		data := src[index : index+int(length)]
+		index += int(length)
+
 		lp := &ListPack{
-			size: item.N,
-			data: item.D,
+			size: size,
+			data: data,
 			prev: last,
+		}
+		if ls.head == nil {
+			ls.head = lp
 		}
 		if last != nil {
 			last.next = lp
 		}
-		if i == 0 {
-			ls.head = lp
-		}
 		ls.tail = lp
 		last = lp
 	}
-
 	return nil
 }

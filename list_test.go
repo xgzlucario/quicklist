@@ -6,8 +6,6 @@ import (
 	"math/rand/v2"
 	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func genList(start, end int) *QuickList {
@@ -19,7 +17,6 @@ func genList(start, end int) *QuickList {
 }
 
 func TestList(t *testing.T) {
-	assert := assert.New(t)
 	const N = 1000
 	SetMaxListPackSize(128)
 	SetDefaultListPackCap(128)
@@ -27,70 +24,70 @@ func TestList(t *testing.T) {
 	t.Run("rpush", func(t *testing.T) {
 		ls := New()
 		for i := 0; i < N; i++ {
-			assert.Equal(ls.Size(), i)
+			equal(t, ls.Size(), i)
 			ls.RPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			v, ok := ls.Index(i)
-			assert.Equal(genKey(i), v)
-			assert.True(ok)
+			equal(t, genKey(i), v)
+			equal(t, true, ok)
 		}
 		// check each node length
 		for cur := ls.head; cur != nil; cur = cur.next {
-			assert.LessOrEqual(len(cur.data), maxListPackSize)
+			lessOrEqual(t, len(cur.data), maxListPackSize)
 		}
 	})
 
 	t.Run("lpush", func(t *testing.T) {
 		ls := New()
 		for i := 0; i < N; i++ {
-			assert.Equal(ls.Size(), i)
+			equal(t, ls.Size(), i)
 			ls.LPush(genKey(i))
 		}
 		for i := 0; i < N; i++ {
 			v, ok := ls.Index(N - 1 - i)
-			assert.Equal(genKey(i), v)
-			assert.True(ok)
+			equal(t, genKey(i), v)
+			equal(t, true, ok)
 		}
 		// check each node length
 		for cur := ls.head; cur != nil; cur = cur.next {
-			assert.LessOrEqual(len(cur.data), maxListPackSize)
+			lessOrEqual(t, len(cur.data), maxListPackSize)
 		}
 	})
 
 	t.Run("lpop", func(t *testing.T) {
 		ls := genList(0, N)
 		for i := 0; i < N; i++ {
-			assert.Equal(ls.Size(), N-i)
+			equal(t, ls.Size(), N-i)
 			key, ok := ls.LPop()
-			assert.Equal(key, genKey(i))
-			assert.True(ok)
+			equal(t, key, genKey(i))
+			equal(t, true, ok)
 		}
 		// pop empty list
 		key, ok := ls.LPop()
-		assert.Equal(key, "")
-		assert.False(ok)
+		equal(t, key, "")
+		equal(t, false, ok)
 	})
 
 	t.Run("rpop", func(t *testing.T) {
 		ls := genList(0, N)
 		for i := 0; i < N; i++ {
-			assert.Equal(ls.Size(), N-i)
+			equal(t, ls.Size(), N-i)
 			key, ok := ls.RPop()
-			assert.Equal(key, genKey(N-i-1))
-			assert.True(ok)
+			equal(t, key, genKey(N-i-1))
+			equal(t, true, ok)
 		}
 		// pop empty list
 		key, ok := ls.RPop()
-		assert.Equal(key, "")
-		assert.False(ok)
+		equal(t, key, "")
+		equal(t, false, ok)
 	})
 
 	t.Run("len", func(t *testing.T) {
 		ls := New()
 		for i := 0; i < N; i++ {
 			ls.RPush(genKey(i))
-			assert.Equal(ls.Size(), i+1)
+			equal(t, ls.Size(), i+1)
 		}
 	})
 
@@ -99,41 +96,41 @@ func TestList(t *testing.T) {
 		for i := 0; i < N; i++ {
 			newK := fmt.Sprintf("newkk-%x", i)
 			ok := ls.Set(i, newK)
-			assert.True(ok)
+			equal(t, true, ok)
 		}
 		var count int
 		ls.Range(0, -1, func(b []byte) bool {
 			targetK := fmt.Sprintf("newkk-%x", count)
-			assert.Equal(string(b), targetK)
+			equal(t, string(b), targetK)
 			count++
 			return false
 		})
-		assert.Equal(N, count)
+		equal(t, N, count)
 
 		ok := ls.Set(N+1, "new")
-		assert.False(ok)
+		equal(t, false, ok)
 	})
 
 	t.Run("remove", func(t *testing.T) {
 		ls := genList(0, N)
 		for i := 0; i < N-1; i++ {
 			val, ok := ls.Remove(0)
-			assert.Equal(val, genKey(i))
-			assert.True(ok)
+			equal(t, val, genKey(i))
+			equal(t, true, ok)
 
 			val, ok = ls.Index(0)
-			assert.Equal(val, genKey(i+1))
-			assert.True(ok)
+			equal(t, val, genKey(i+1))
+			equal(t, true, ok)
 		}
 
-		assert.Equal(ls.head.Size(), 0)
+		equal(t, ls.head.Size(), 0)
 		// only has 2 nodes.
-		assert.Equal(ls.head.next, ls.tail)
-		assert.Equal(ls.tail.Size(), 1)
+		equal(t, ls.head.next, ls.tail)
+		equal(t, ls.tail.Size(), 1)
 
 		val, ok := ls.tail.RPop()
-		assert.Equal(val, genKey(N-1))
-		assert.True(ok)
+		equal(t, val, genKey(N-1))
+		equal(t, true, ok)
 	})
 
 	t.Run("removeFirst", func(t *testing.T) {
@@ -141,63 +138,68 @@ func TestList(t *testing.T) {
 
 		// remove not exist item.
 		ok := ls.RemoveFirst("none")
-		assert.False(ok)
+		equal(t, false, ok)
 
 		for i := 0; i < N-1; i++ {
 			ok := ls.RemoveFirst(genKey(i))
-			assert.True(ok)
+			equal(t, true, ok)
 
 			val, ok := ls.Index(0)
-			assert.Equal(val, genKey(i+1))
-			assert.True(ok)
+			equal(t, val, genKey(i+1))
+			equal(t, true, ok)
 		}
 
-		assert.Equal(ls.head.Size(), 0)
+		equal(t, ls.head.Size(), 0)
 
 		// only has 2 nodes.
-		assert.Equal(ls.head.next, ls.tail)
-		assert.Equal(ls.tail.Size(), 1)
+		equal(t, ls.head.next, ls.tail)
+		equal(t, ls.tail.Size(), 1)
 
 		val, ok := ls.tail.RPop()
-		assert.Equal(val, genKey(N-1))
-		assert.True(ok)
+		equal(t, val, genKey(N-1))
+		equal(t, true, ok)
 	})
 
 	t.Run("removeRange", func(t *testing.T) {
 		ls := genList(0, N)
 
 		n := ls.RemoveRange(0, N)
-		assert.Equal(n, N)
-		assert.Equal(ls.head.Size(), 0)
+		equal(t, n, N)
+		equal(t, ls.head.Size(), 0)
 
 		val, ok := ls.Index(0)
-		assert.Equal(val, "")
-		assert.False(ok)
+		equal(t, val, "")
+		equal(t, false, ok)
 
 		// only has 2 nodes.
-		assert.Equal(ls.head.next, ls.tail)
-		assert.Equal(ls.tail.Size(), 0)
+		equal(t, ls.head.next, ls.tail)
+		equal(t, ls.tail.Size(), 0)
 	})
 
 	t.Run("marshal", func(t *testing.T) {
 		ls := genList(0, N)
-		data, err := ls.MarshalJSON()
-		assert.Nil(err)
+		data, err := ls.MarshalBinary()
+		isNil(t, err)
 
 		ls2 := New()
-		err = ls2.UnmarshalJSON(data)
-		assert.Nil(err)
+		err = ls2.UnmarshalBinary(data)
+		isNil(t, err)
 
 		for i := 0; i < N; i++ {
 			v, ok := ls.Index(i)
-			assert.Equal(genKey(i), v)
-			assert.True(ok)
+			equal(t, genKey(i), v)
+			equal(t, true, ok)
 		}
 
 		// unmarshal error
 		data = md5.New().Sum(data)
-		err = ls2.UnmarshalJSON(data)
-		assert.NotNil(err)
+		err = ls2.UnmarshalBinary(data)
+		isNotNil(t, err)
+
+		// unmarshal size error
+		data = []byte{1, 1, 1, 1}
+		err = ls2.UnmarshalBinary(data)
+		isNotNil(t, err)
 	})
 
 	t.Run("range", func(t *testing.T) {
@@ -209,11 +211,11 @@ func TestList(t *testing.T) {
 
 		var count int
 		ls.Range(0, -1, func(s []byte) bool {
-			assert.Equal(string(s), genKey(count))
+			equal(t, string(s), genKey(count))
 			count++
 			return false
 		})
-		assert.Equal(count, N)
+		equal(t, count, N)
 
 		ls.Range(1, 1, func(s []byte) bool {
 			panic("should not call")
@@ -232,11 +234,11 @@ func TestList(t *testing.T) {
 
 		var count int
 		ls.RevRange(0, -1, func(s []byte) bool {
-			assert.Equal(string(s), genKey(N-count-1))
+			equal(t, string(s), genKey(N-count-1))
 			count++
 			return false
 		})
-		assert.Equal(count, N)
+		equal(t, count, N)
 
 		ls.RevRange(1, 1, func(s []byte) bool {
 			panic("should not call")
@@ -252,8 +254,6 @@ func FuzzList(f *testing.F) {
 	vls := make([]string, 0, 4096)
 
 	f.Fuzz(func(t *testing.T, key string) {
-		assert := assert.New(t)
-
 		switch rand.IntN(15) {
 		// RPush
 		case 0, 1, 2:
@@ -273,11 +273,11 @@ func FuzzList(f *testing.F) {
 			if len(vls) > 0 {
 				valVls := vls[0]
 				vls = vls[1:]
-				assert.Equal(val, valVls)
-				assert.True(ok)
+				equal(t, val, valVls)
+				equal(t, true, ok)
 			} else {
-				assert.Equal(val, "")
-				assert.False(ok)
+				equal(t, val, "")
+				equal(t, false, ok)
 			}
 
 		// RPop
@@ -286,11 +286,11 @@ func FuzzList(f *testing.F) {
 			if len(vls) > 0 {
 				valVls := vls[len(vls)-1]
 				vls = vls[:len(vls)-1]
-				assert.Equal(val, valVls)
-				assert.True(ok)
+				equal(t, val, valVls)
+				equal(t, true, ok)
 			} else {
-				assert.Equal(val, "")
-				assert.False(ok)
+				equal(t, val, "")
+				equal(t, false, ok)
 			}
 
 		// Set
@@ -299,7 +299,7 @@ func FuzzList(f *testing.F) {
 				index := rand.IntN(len(vls))
 				randKey := fmt.Sprintf("%d", rand.Uint32())
 				ok := ls.Set(index, randKey)
-				assert.True(ok)
+				equal(t, true, ok)
 				vls[index] = randKey
 			}
 
@@ -309,8 +309,8 @@ func FuzzList(f *testing.F) {
 				index := rand.IntN(len(vls))
 				val, ok := ls.Index(index)
 				vlsVal := vls[index]
-				assert.Equal(val, vlsVal)
-				assert.True(ok)
+				equal(t, val, vlsVal)
+				equal(t, true, ok)
 			}
 
 		// Remove
@@ -318,8 +318,8 @@ func FuzzList(f *testing.F) {
 			if len(vls) > 0 {
 				index := rand.IntN(len(vls))
 				val, ok := ls.Remove(index)
-				assert.Equal(val, vls[index])
-				assert.True(ok)
+				equal(t, val, vls[index])
+				equal(t, true, ok)
 				vls = append(vls[:index], vls[index+1:]...)
 			}
 
@@ -334,22 +334,22 @@ func FuzzList(f *testing.F) {
 
 				var count int
 				ls.Range(start, end, func(data []byte) bool {
-					assert.Equal(b2s(data), vls[start+count])
+					equal(t, b2s(data), vls[start+count])
 					count++
 					return false
 				})
 			}
 
-		// MarshalJSON
+		// MarshalBinary
 		case 14:
-			data, _ := ls.MarshalJSON()
+			data, _ := ls.MarshalBinary()
 			nls := New()
-			err := nls.UnmarshalJSON(data)
-			assert.Nil(err)
+			err := nls.UnmarshalBinary(data)
+			isNil(t, err)
 
 			var i int
 			nls.Range(0, -1, func(data []byte) bool {
-				assert.Equal(b2s(data), vls[i])
+				equal(t, b2s(data), vls[i])
 				i++
 				return false
 			})

@@ -51,4 +51,6 @@ func main() {
 
 	// Remove
 	fmt.Println(ls.Remove(1)) // 00002, true
+
+	ls.MarshalBinary()
 }

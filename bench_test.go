@@ -65,6 +65,13 @@ func BenchmarkList(b *testing.B) {
 			})
 		}
 	})
+	b.Run("marshal", func(b *testing.B) {
+		ls := genList(0, N)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ls.MarshalBinary()
+		}
+	})
 }
 
 func BenchmarkListPack(b *testing.B) {
