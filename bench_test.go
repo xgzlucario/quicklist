@@ -69,7 +69,7 @@ func BenchmarkList(b *testing.B) {
 		ls := genList(0, N)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ls.MarshalBinary()
+			_, _ = ls.MarshalBinary()
 		}
 	})
 }
