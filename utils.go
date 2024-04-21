@@ -11,12 +11,12 @@ func appendUvarint(b []byte, n int, reverse bool) []byte {
 	if !reverse {
 		return binary.AppendUvarint(b, uint64(n))
 	}
-	bb := binary.AppendUvarint(bpool.Get(binary.MaxVarintLen32)[:0], uint64(n))
-	if len(bb) > 1 {
-		slices.Reverse(bb)
+	before := len(b)
+	b = binary.AppendUvarint(b, uint64(n))
+	after := len(b)
+	if after-before > 1 {
+		slices.Reverse(b[before:])
 	}
-	b = append(b, bb...)
-	bpool.Put(bb)
 	return b
 }
 

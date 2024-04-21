@@ -28,7 +28,7 @@ func genKey(id int) string {
 func main() {
 	c := ""
 	entries := 0
-	flag.StringVar(&c, "list", "slice", "list to bench.")
+	flag.StringVar(&c, "list", "[]string", "list to bench.")
 	flag.IntVar(&entries, "entries", 2000*10000, "number of entries to test.")
 	flag.Parse()
 
@@ -37,7 +37,7 @@ func main() {
 
 	start := time.Now()
 	switch c {
-	case "slice":
+	case "[]string":
 		ls := make([]string, 0)
 		for i := 0; i < entries; i++ {
 			ls = append(ls, genKey(i))
