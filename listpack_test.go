@@ -8,7 +8,7 @@ import (
 func genListPack(start, end int) *ListPack {
 	lp := NewListPack()
 	for i := start; i < end; i++ {
-		lp.RPush(genKey(i))
+		lp.Insert(-1, genKey(i))
 	}
 	return lp
 }
@@ -24,10 +24,10 @@ func TestListPack(t *testing.T) {
 		lp := NewListPack()
 		for i := 0; i < N; i++ {
 			equal(t, lp.Size(), i)
-			lp.RPush(genKey(i))
+			lp.Insert(-1, genKey(i))
 		}
 		for i := 0; i < N; i++ {
-			val, ok := lp.LPop()
+			val, ok := lp.Remove(0)
 			equal(t, val, genKey(i))
 			equal(t, true, ok)
 		}
@@ -37,10 +37,10 @@ func TestListPack(t *testing.T) {
 		lp := NewListPack()
 		for i := 0; i < N; i++ {
 			equal(t, lp.Size(), i)
-			lp.LPush(genKey(i))
+			lp.Insert(0, genKey(i))
 		}
 		for i := 0; i < N; i++ {
-			val, ok := lp.RPop()
+			val, ok := lp.Remove(-1)
 			equal(t, val, genKey(i))
 			equal(t, true, ok)
 		}
@@ -51,7 +51,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [0, -1]
 		var i int
-		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
+		lp.iterFront(0, -1, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(i))
 			i++
 			return false
@@ -60,7 +60,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [0, N/2]
 		i = 0
-		lp.iterFront(0, N/2, func(data []byte, _, _ int) bool {
+		lp.iterFront(0, N/2, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(i))
 			i++
 			return false
@@ -69,7 +69,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [N/2, -1]
 		i = 0
-		lp.iterFront(N/2, -1, func(data []byte, _, _ int) bool {
+		lp.iterFront(N/2, -1, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(i+N/2))
 			i++
 			return false
@@ -82,7 +82,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [0, -1]
 		var i int
-		lp.iterBack(0, -1, func(data []byte, _, _ int) bool {
+		lp.iterBack(0, -1, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(N-1-i))
 			i++
 			return false
@@ -91,7 +91,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [0, N/2]
 		i = 0
-		lp.iterBack(0, N/2, func(data []byte, _, _ int) bool {
+		lp.iterBack(0, N/2, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(N-1-i))
 			i++
 			return false
@@ -100,7 +100,7 @@ func TestListPack(t *testing.T) {
 
 		// iter [N/2, -1]
 		i = 0
-		lp.iterBack(N/2, -1, func(data []byte, _, _ int) bool {
+		lp.iterBack(N/2, -1, func(data []byte, _, _, _ int) bool {
 			equal(t, string(data), genKey(N/2-i-1))
 			i++
 			return false
@@ -119,62 +119,66 @@ func TestListPack(t *testing.T) {
 		equal(t, val, genKey(0))
 		equal(t, true, ok)
 
-		res, ok := lp.LPop()
+		res, ok := lp.Remove(0)
 		equal(t, res, genKey(1))
 		equal(t, true, ok)
 	})
 
-	t.Run("removeElem", func(t *testing.T) {
+	t.Run("removeFirst", func(t *testing.T) {
 		lp := genListPack(0, N)
 
-		ok := lp.RemoveElem(genKey(N))
-		equal(t, false, ok)
+		index, ok := lp.RemoveFirst(genKey(N))
+		if index != 0 {
+			t.Error(index, N)
+		}
+		if ok {
+			t.Error(ok)
+		}
 
-		ok = lp.RemoveElem(genKey(0))
+		index, ok = lp.RemoveFirst(genKey(0))
+		equal(t, index, 0)
 		equal(t, true, ok)
 
-		res, ok := lp.LPop()
+		res, ok := lp.Remove(0)
 		equal(t, res, genKey(1))
-		equal(t, true, ok)
-	})
-
-	t.Run("removeRange", func(t *testing.T) {
-		lp := genListPack(0, N)
-
-		// case1
-		n := lp.RemoveRange(0, N/2)
-		equal(t, n, N/2)
-
-		val, ok := lp.LPop()
-		equal(t, val, genKey(N/2))
-		equal(t, true, ok)
-
-		// case2
-		lp = genListPack(0, N)
-		n = lp.RemoveRange(N/2, N*2)
-		equal(t, n, N/2)
-
-		val, ok = lp.RPop()
-		equal(t, val, genKey(N/2-1))
 		equal(t, true, ok)
 	})
 
 	t.Run("set", func(t *testing.T) {
 		lp := genListPack(0, N)
+
 		for i := 0; i < N; i++ {
-			ok := lp.Set(i, fmt.Sprintf("newkey-%d", i))
-			equal(t, true, ok)
+			newKey := fmt.Sprintf("newkey-%d", i)
+			ok := lp.Set(i, newKey)
+			if !ok {
+				t.Error(ok)
+			}
+
+			index, ok := lp.First(newKey)
+			if index != i {
+				t.Error(index, i)
+			}
+			if !ok {
+				t.Error(ok)
+			}
 		}
 
-		var i int
-		lp.iterFront(0, -1, func(data []byte, _, _ int) bool {
-			equal(t, string(data), fmt.Sprintf("newkey-%d", i))
-			i++
-			return false
-		})
-		equal(t, i, N)
+		// set -1
+		ok := lp.Set(-1, "last")
+		if !ok {
+			t.Error(ok)
+		}
 
-		ok := lp.Set(N+1, "newKey")
+		index, ok := lp.First("last")
+		if index != N-1 {
+			t.Error(index, N-1)
+		}
+		if !ok {
+			t.Error(ok)
+		}
+
+		// out of bound
+		ok = lp.Set(N+1, "newKey")
 		equal(t, false, ok)
 	})
 
@@ -183,7 +187,7 @@ func TestListPack(t *testing.T) {
 
 		// insert to 0
 		lp.Insert(0, "test0")
-		val, ok := lp.LPop()
+		val, ok := lp.Remove(0)
 		equal(t, val, "test0")
 		equal(t, ok, true)
 
@@ -195,7 +199,7 @@ func TestListPack(t *testing.T) {
 
 		// insert 11
 		lp.Insert(11, "test2")
-		val, ok = lp.RPop()
+		val, ok = lp.Remove(-1)
 		notEqual(t, val, "test2")
 		equal(t, ok, true)
 	})

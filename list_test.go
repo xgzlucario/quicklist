@@ -128,7 +128,7 @@ func TestList(t *testing.T) {
 		equal(t, ls.head.next, ls.tail)
 		equal(t, ls.tail.Size(), 1)
 
-		val, ok := ls.tail.RPop()
+		val, ok := ls.tail.Remove(-1)
 		equal(t, val, genKey(N-1))
 		equal(t, true, ok)
 	})
@@ -137,16 +137,31 @@ func TestList(t *testing.T) {
 		ls := genList(0, N)
 
 		// remove not exist item.
-		ok := ls.RemoveFirst("none")
-		equal(t, false, ok)
+		index, ok := ls.RemoveFirst("none")
+		if index != 0 {
+			t.Error(index, 0)
+		}
+		if ok {
+			t.Error(ok)
+		}
 
 		for i := 0; i < N-1; i++ {
-			ok := ls.RemoveFirst(genKey(i))
-			equal(t, true, ok)
+			// same as LPop
+			index, ok := ls.RemoveFirst(genKey(i))
+			if index != 0 {
+				t.Error(index, i)
+			}
+			if !ok {
+				t.Error(ok)
+			}
 
 			val, ok := ls.Index(0)
-			equal(t, val, genKey(i+1))
-			equal(t, true, ok)
+			if val != genKey(i+1) {
+				t.Error(val, genKey(i+1))
+			}
+			if !ok {
+				t.Error(ok)
+			}
 		}
 
 		equal(t, ls.head.Size(), 0)
@@ -155,25 +170,9 @@ func TestList(t *testing.T) {
 		equal(t, ls.head.next, ls.tail)
 		equal(t, ls.tail.Size(), 1)
 
-		val, ok := ls.tail.RPop()
+		val, ok := ls.tail.Remove(-1)
 		equal(t, val, genKey(N-1))
 		equal(t, true, ok)
-	})
-
-	t.Run("removeRange", func(t *testing.T) {
-		ls := genList(0, N)
-
-		n := ls.RemoveRange(0, N)
-		equal(t, n, N)
-		equal(t, ls.head.Size(), 0)
-
-		val, ok := ls.Index(0)
-		equal(t, val, "")
-		equal(t, false, ok)
-
-		// only has 2 nodes.
-		equal(t, ls.head.next, ls.tail)
-		equal(t, ls.tail.Size(), 0)
 	})
 
 	t.Run("marshal", func(t *testing.T) {

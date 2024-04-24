@@ -40,29 +40,12 @@ func NewListPack() *ListPack {
 	return &ListPack{data: make([]byte, 0, defaultListPackCap)}
 }
 
-func (lp *ListPack) RPush(data string) {
-	lp.data = appendEntry(lp.data, data)
-	lp.size++
-}
-
-func (lp *ListPack) LPush(data string) {
-	lp.Insert(0, data)
-}
-
-func (lp *ListPack) RPop() (string, bool) {
-	return lp.Remove(lp.Size() - 1)
-}
-
-func (lp *ListPack) LPop() (string, bool) {
-	return lp.Remove(0)
-}
-
 func (lp *ListPack) Size() int {
 	return int(lp.size)
 }
 
 // lpIterator is listpack iterator.
-type lpIterator func(data []byte, entryStartPos, entryEndPos int) (stop bool)
+type lpIterator func(data []byte, index int, startPos, endPos int) (stop bool)
 
 func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 	if end == -1 {
@@ -86,7 +69,7 @@ func (lp *ListPack) iterFront(start, end int, f lpIterator) {
 			dataEndPos := dataStartPos + int(dataLen)
 
 			data := lp.data[dataStartPos:dataEndPos]
-			if f(data, index, indexNext) {
+			if f(data, i, index, indexNext) {
 				return
 			}
 		}
@@ -118,7 +101,7 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 			dataEndPos := dataStartPos + int(dataLen)
 
 			data := lp.data[dataStartPos:dataEndPos]
-			if f(data, indexNext, index) {
+			if f(data, i, indexNext, index) {
 				return
 			}
 		}
@@ -129,50 +112,78 @@ func (lp *ListPack) iterBack(start, end int, f lpIterator) {
 // find quickly locates the element based on index.
 // When the target index is in the first half, use forward traversal;
 // otherwise, use reverse traversal.
-func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndPos int)) {
-	if lp.size == 0 || index >= lp.Size() {
+func (lp *ListPack) find(index int, fn func(old []byte, index int, startPos, endPos int)) {
+	if lp.size == 0 || index >= lp.Size() || index < 0 {
 		return
 	}
 	if index <= lp.Size()/2 {
-		lp.iterFront(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
-			fn(old, entryStartPos, entryEndPos)
+		lp.iterFront(index, index+1, func(old []byte, index int, startPos, endPos int) bool {
+			fn(old, index, startPos, endPos)
 			return true
 		})
 	} else {
 		index = lp.Size() - index - 1
-		lp.iterBack(index, index+1, func(old []byte, entryStartPos, entryEndPos int) bool {
-			fn(old, entryStartPos, entryEndPos)
+		lp.iterBack(index, index+1, func(old []byte, index int, startPos, endPos int) bool {
+			fn(old, index, startPos, endPos)
 			return true
 		})
 	}
 }
 
+// Insert datas into listpack.
+// index = 0: same as `LPush`
+// index = -1: same as `RPush`
 func (lp *ListPack) Insert(index int, datas ...string) {
-	if index > int(lp.size) {
+	if index == -1 {
+		index = lp.Size()
+	}
+
+	// rpush
+	if index == lp.Size() {
+		for _, data := range datas {
+			lp.data = appendEntry(lp.data, data)
+			lp.size++
+		}
 		return
 	}
-	var startPos int
-	// find pos
-	lp.find(index, func(_ []byte, entryStartPos, _ int) {
-		startPos = entryStartPos
-	})
-	var alloc []byte
-	for _, data := range datas {
-		alloc = appendEntry(alloc, data)
-		lp.size++
+
+	// insert
+	if index < lp.Size() {
+		var pos int
+		lp.find(index, func(_ []byte, _, startPos, _ int) {
+			pos = startPos
+		})
+
+		var alloc []byte
+		for _, data := range datas {
+			alloc = appendEntry(alloc, data)
+			lp.size++
+		}
+		lp.data = slices.Insert(lp.data, pos, alloc...)
+		bpool.Put(alloc)
 	}
-	lp.data = slices.Insert(lp.data, startPos, alloc...)
-	// reuse
-	bpool.Put(alloc)
+}
+
+func (lp *ListPack) First(data string) (res int, ok bool) {
+	lp.iterFront(0, -1, func(old []byte, index int, _, _ int) bool {
+		if bytes.Equal(s2b(&data), old) {
+			res, ok = index, true
+		}
+		return ok
+	})
+	return
 }
 
 func (lp *ListPack) Set(index int, data string) (ok bool) {
-	lp.find(index, func(old []byte, entryStartPos, entryEndPos int) {
+	if index == -1 {
+		index = lp.Size() - 1
+	}
+	lp.find(index, func(old []byte, _, startPos, endPos int) {
 		if len(data) == len(old) {
 			copy(old, data)
 		} else {
 			alloc := appendEntry(nil, data)
-			lp.data = slices.Replace(lp.data, entryStartPos, entryEndPos, alloc...)
+			lp.data = slices.Replace(lp.data, startPos, endPos, alloc...)
 			bpool.Put(alloc)
 		}
 		ok = true
@@ -181,38 +192,24 @@ func (lp *ListPack) Set(index int, data string) (ok bool) {
 }
 
 func (lp *ListPack) Remove(index int) (val string, ok bool) {
-	lp.find(index, func(data []byte, entryStartPos, entryEndPos int) {
+	if index == -1 {
+		index = lp.Size() - 1
+	}
+	lp.find(index, func(data []byte, _, startPos, endPos int) {
 		val = string(data)
-		lp.data = slices.Delete(lp.data, entryStartPos, entryEndPos)
+		lp.data = slices.Delete(lp.data, startPos, endPos)
 		lp.size--
 		ok = true
 	})
 	return
 }
 
-func (lp *ListPack) RemoveRange(index, count int) (n int) {
-	var start, end int
-	var flag bool
-	lp.iterFront(index, index+count, func(_ []byte, entryStartPos, entryEndPos int) bool {
-		if !flag {
-			start = entryStartPos
-			flag = true
-		}
-		end = entryEndPos
-		n++
-		return false
-	})
-	lp.data = slices.Delete(lp.data, start, end)
-	lp.size -= uint32(n)
-	return
-}
-
-func (lp *ListPack) RemoveElem(data string) (ok bool) {
-	lp.iterFront(0, -1, func(old []byte, entryStartPos, entryEndPos int) bool {
+func (lp *ListPack) RemoveFirst(data string) (res int, ok bool) {
+	lp.iterFront(0, -1, func(old []byte, index int, startPos, endPos int) bool {
 		if bytes.Equal(s2b(&data), old) {
-			lp.data = slices.Delete(lp.data, entryStartPos, entryEndPos)
+			lp.data = slices.Delete(lp.data, startPos, endPos)
 			lp.size--
-			ok = true
+			res, ok = index, true
 		}
 		return ok
 	})

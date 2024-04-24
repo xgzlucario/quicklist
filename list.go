@@ -39,7 +39,7 @@ func (ls *QuickList) lpush(key string) {
 		ls.head.prev = lp
 		ls.head = lp
 	}
-	ls.head.LPush(key)
+	ls.head.Insert(0, key)
 }
 
 // LPush
@@ -58,7 +58,7 @@ func (ls *QuickList) rpush(key string) {
 		lp.prev = ls.tail
 		ls.tail = lp
 	}
-	ls.tail.RPush(key)
+	ls.tail.Insert(-1, key)
 }
 
 // RPush
@@ -91,7 +91,7 @@ func (ls *QuickList) RPop() (key string, ok bool) {
 
 	for lp := ls.tail; lp != nil; lp = lp.prev {
 		if lp.size > 0 {
-			return lp.RPop()
+			return lp.Remove(-1)
 		}
 		ls.free(lp)
 	}
@@ -142,34 +142,25 @@ func (ls *QuickList) Remove(index int) (val string, ok bool) {
 	return
 }
 
-// RemoveRange
-func (ls *QuickList) RemoveRange(index, count int) (n int) {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-
-	lp, indexInternal := ls.find(index)
-	for n < count && lp != nil {
-		n += lp.RemoveRange(indexInternal, count)
-		ls.free(lp)
-		indexInternal = 0
-		lp = lp.next
-	}
-	return
-}
-
 // RemoveFirst
-func (ls *QuickList) RemoveFirst(key string) bool {
+func (ls *QuickList) RemoveFirst(key string) (res int, ok bool) {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
 	for lp := ls.head; lp != nil; lp = lp.next {
 		if lp.size == 0 {
 			ls.free(lp)
-		} else if lp.RemoveElem(key) {
-			return true
+
+		} else {
+			n, ok := lp.RemoveFirst(key)
+			if ok {
+				return res + n, true
+			} else {
+				res += lp.Size()
+			}
 		}
 	}
-	return false
+	return 0, false
 }
 
 // Size
@@ -197,7 +188,7 @@ func (ls *QuickList) iterFront(start, end int, f lsIterator) {
 
 	var stop bool
 	for !stop && count > 0 && lp != nil {
-		lp.iterFront(indexInternal, -1, func(data []byte, _, _ int) bool {
+		lp.iterFront(indexInternal, -1, func(data []byte, _, _, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0
@@ -227,7 +218,7 @@ func (ls *QuickList) iterBack(start, end int, f lsIterator) {
 
 	var stop bool
 	for !stop && count > 0 && lp != nil {
-		lp.iterBack(start, -1, func(data []byte, _, _ int) bool {
+		lp.iterBack(start, -1, func(data []byte, _, _, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0
