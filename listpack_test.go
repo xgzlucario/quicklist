@@ -177,4 +177,26 @@ func TestListPack(t *testing.T) {
 		ok := lp.Set(N+1, "newKey")
 		equal(t, false, ok)
 	})
+
+	t.Run("insert", func(t *testing.T) {
+		lp := genListPack(0, 10)
+
+		// insert to 0
+		lp.Insert(0, "test0")
+		val, ok := lp.LPop()
+		equal(t, val, "test0")
+		equal(t, ok, true)
+
+		// insert to 5
+		lp.Insert(5, "test1")
+		val, ok = lp.Remove(5)
+		equal(t, val, "test1")
+		equal(t, ok, true)
+
+		// insert 11
+		lp.Insert(11, "test2")
+		val, ok = lp.RPop()
+		notEqual(t, val, "test2")
+		equal(t, ok, true)
+	})
 }

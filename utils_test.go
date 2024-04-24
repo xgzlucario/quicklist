@@ -43,6 +43,12 @@ func lessOrEqual[T int](t *testing.T, expected, actual T) {
 	}
 }
 
+func notEqual[T comparable](t *testing.T, expected, actual T) {
+	if expected == actual {
+		t.Fatalf("[notEqual] expected: %v, actual: %v", expected, actual)
+	}
+}
+
 func equal[T comparable](t *testing.T, expected, actual T) {
 	if expected != actual {
 		t.Fatalf("[equal] expected: %v, actual: %v", expected, actual)

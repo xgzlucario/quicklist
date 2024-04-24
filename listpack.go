@@ -46,11 +46,7 @@ func (lp *ListPack) RPush(data string) {
 }
 
 func (lp *ListPack) LPush(data string) {
-	entry := appendEntry(nil, data)
-	lp.data = slices.Insert(lp.data, 0, entry...)
-	lp.size++
-	// reuse
-	bpool.Put(entry)
+	lp.Insert(0, data)
 }
 
 func (lp *ListPack) RPop() (string, bool) {
@@ -149,6 +145,25 @@ func (lp *ListPack) find(index int, fn func(old []byte, entryStartPos, entryEndP
 			return true
 		})
 	}
+}
+
+func (lp *ListPack) Insert(index int, datas ...string) {
+	if index > int(lp.size) {
+		return
+	}
+	var startPos int
+	// find pos
+	lp.find(index, func(_ []byte, entryStartPos, _ int) {
+		startPos = entryStartPos
+	})
+	var alloc []byte
+	for _, data := range datas {
+		alloc = appendEntry(alloc, data)
+		lp.size++
+	}
+	lp.data = slices.Insert(lp.data, startPos, alloc...)
+	// reuse
+	bpool.Put(alloc)
 }
 
 func (lp *ListPack) Set(index int, data string) (ok bool) {
