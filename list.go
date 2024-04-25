@@ -188,7 +188,7 @@ func (ls *QuickList) iterFront(start, end int, f lsIterator) {
 
 	var stop bool
 	for !stop && count > 0 && lp != nil {
-		lp.iterFront(indexInternal, -1, func(data []byte, _, _, _ int) bool {
+		lp.Range(indexInternal, -1, func(data []byte, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0
@@ -218,7 +218,7 @@ func (ls *QuickList) iterBack(start, end int, f lsIterator) {
 
 	var stop bool
 	for !stop && count > 0 && lp != nil {
-		lp.iterBack(start, -1, func(data []byte, _, _, _ int) bool {
+		lp.RevRange(start, -1, func(data []byte, _ int) bool {
 			stop = f(data)
 			count--
 			return stop || count == 0

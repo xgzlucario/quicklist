@@ -165,7 +165,7 @@ func (lp *ListPack) Insert(index int, datas ...string) {
 }
 
 func (lp *ListPack) First(data string) (res int, ok bool) {
-	lp.iterFront(0, -1, func(old []byte, index int, _, _ int) bool {
+	lp.Range(0, -1, func(old []byte, index int) bool {
 		if bytes.Equal(s2b(&data), old) {
 			res, ok = index, true
 		}
@@ -214,6 +214,18 @@ func (lp *ListPack) RemoveFirst(data string) (res int, ok bool) {
 		return ok
 	})
 	return
+}
+
+func (lp *ListPack) Range(start, end int, fn func(data []byte, index int) (stop bool)) {
+	lp.iterFront(start, end, func(data []byte, index int, _, _ int) bool {
+		return fn(data, index)
+	})
+}
+
+func (lp *ListPack) RevRange(start, end int, fn func(data []byte, index int) (stop bool)) {
+	lp.iterBack(start, end, func(data []byte, index int, _, _ int) bool {
+		return fn(data, index)
+	})
 }
 
 // encode data to [data_len, data, entry_len].

@@ -203,4 +203,47 @@ func TestListPack(t *testing.T) {
 		notEqual(t, val, "test2")
 		equal(t, ok, true)
 	})
+
+	t.Run("range", func(t *testing.T) {
+		lp := genListPack(0, N)
+
+		// range [0,-1]
+		count := 0
+		lp.Range(0, -1, func(data []byte, index int) (stop bool) {
+			if string(data) != genKey(index) {
+				t.Error(string(data), genKey(index))
+			}
+			count++
+			return false
+		})
+		if count != N {
+			t.Error(count, N)
+		}
+
+		// revrange [0,-1]
+		count = 0
+		lp.RevRange(0, -1, func(data []byte, index int) (stop bool) {
+			if string(data) != genKey(N-index-1) {
+				t.Error(string(data), genKey(N-index-1))
+			}
+			count++
+			return false
+		})
+		if count != N {
+			t.Error(count, N)
+		}
+
+		// range [0,N/2]
+		count = 0
+		lp.Range(0, N/2, func(data []byte, index int) (stop bool) {
+			if index > N/2 {
+				t.Error(index, N/2)
+			}
+			count++
+			return false
+		})
+		if count != N/2 {
+			t.Error(count, N)
+		}
+	})
 }
