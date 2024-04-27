@@ -7,8 +7,6 @@ import (
 )
 
 var (
-	defaultListPackCap = 128
-
 	maxListPackSize = 1024 * 1024
 
 	bpool = NewBufferPool()
@@ -37,7 +35,7 @@ type ListPack struct {
 }
 
 func NewListPack() *ListPack {
-	return &ListPack{data: make([]byte, 0, defaultListPackCap)}
+	return &ListPack{data: make([]byte, 0, 32)}
 }
 
 func (lp *ListPack) Size() int {

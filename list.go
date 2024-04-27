@@ -22,10 +22,6 @@ func SetMaxListPackSize(s int) {
 	maxListPackSize = s
 }
 
-func SetDefaultListPackCap(s int) {
-	defaultListPackCap = s
-}
-
 // New create a quicklist instance.
 func New() *QuickList {
 	lp := NewListPack()

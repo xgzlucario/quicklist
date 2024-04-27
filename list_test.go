@@ -19,7 +19,6 @@ func genList(start, end int) *QuickList {
 func TestList(t *testing.T) {
 	const N = 1000
 	SetMaxListPackSize(128)
-	SetDefaultListPackCap(128)
 
 	t.Run("rpush", func(t *testing.T) {
 		ls := New()
