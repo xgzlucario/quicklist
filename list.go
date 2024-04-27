@@ -247,46 +247,40 @@ func (ls *QuickList) MarshalBinary() ([]byte, error) {
 	defer ls.mu.RUnlock()
 
 	for lp := ls.head; lp != nil && lp.size > 0; lp = lp.next {
-		// append [size, len_data, data]
-		data = order.AppendUint32(data, lp.size)
-		data = order.AppendUint32(data, uint32(len(lp.data)))
-		data = append(data, lp.data...)
+		data = append(data, lp.ToBytes()...)
 	}
 	return data, nil
 }
 
-var ErrOutOfRange = errors.New("unmarshal error: index out of range")
+var ErrUnmarshal = errors.New("unmarshal error: invalid data")
 
 // UnmarshalBinary
 func (ls *QuickList) UnmarshalBinary(src []byte) error {
+	if len(src) < 8 {
+		return ErrUnmarshal
+	}
+
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
 	ls.head = nil
 	var last *ListPack
 
-	for index := 0; index < len(src); {
-		if len(src)-index < 8 {
-			return ErrOutOfRange
-		}
-		// size
-		size := order.Uint32(src[index:])
-		index += 4
-		// length
-		length := order.Uint32(src[index:])
-		index += 4
-		// data
-		if index+int(length) > len(src) {
-			return ErrOutOfRange
-		}
-		data := src[index : index+int(length)]
-		index += int(length)
+	for index := 0; len(src)-index >= 8; {
+		// dataLen
+		dataLen := order.Uint32(src[index+4:])
 
-		lp := &ListPack{
-			size: size,
-			data: data,
-			prev: last,
+		// bound check
+		if index+8+int(dataLen) > len(src) {
+			return ErrUnmarshal
 		}
+		lp, err := NewFromBytes(src[index : index+8+int(dataLen)])
+		if err != nil {
+			return err
+		}
+		lp.prev = last
+		index = index + 8 + int(dataLen)
+
 		if ls.head == nil {
 			ls.head = lp
 		}

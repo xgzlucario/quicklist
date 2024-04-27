@@ -236,3 +236,29 @@ func appendEntry(dst []byte, data string) []byte {
 	dst = append(dst, data...)
 	return appendUvarint(dst, len(dst)-before, true)
 }
+
+// ToBytes
+func (lp *ListPack) ToBytes() []byte {
+	data := bpool.Get(len(lp.data) + 4 + 4)[:0]
+
+	// append [size, len_data, data]
+	data = order.AppendUint32(data, lp.size)
+	data = order.AppendUint32(data, uint32(len(lp.data)))
+	data = append(data, lp.data...)
+
+	return data
+}
+
+// NewFromBytes
+func NewFromBytes(data []byte) (*ListPack, error) {
+	if len(data) < 8 {
+		return nil, ErrUnmarshal
+	}
+	lp := NewListPack()
+
+	lp.size = order.Uint32(data)
+	dataLen := order.Uint32(data[4:])
+	lp.data = data[8 : 8+dataLen]
+
+	return lp, nil
+}

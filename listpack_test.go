@@ -246,4 +246,28 @@ func TestListPack(t *testing.T) {
 			t.Error(count, N)
 		}
 	})
+
+	t.Run("to-bytes", func(t *testing.T) {
+		lp := genListPack(0, N)
+		data := lp.ToBytes()
+
+		lpnew, err := NewFromBytes(data)
+		if err != nil {
+			t.Error(err)
+		}
+
+		for i := 0; i < N; i++ {
+			val, ok := lpnew.Remove(0)
+			equal(t, val, genKey(i))
+			equal(t, true, ok)
+		}
+
+		// error
+		lpnew2, err := NewFromBytes([]byte("Hello"))
+		if lpnew2 != nil {
+			t.Error("should be nil")
+		}
+		isNotNil(t, err)
+
+	})
 }
