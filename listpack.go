@@ -29,9 +29,8 @@ var (
 	Using this structure, it is fast to iterate from both sides.
 */
 type ListPack struct {
-	size       uint32
-	data       []byte
-	prev, next *ListPack
+	size uint32
+	data []byte
 }
 
 func NewListPack() *ListPack {
@@ -160,16 +159,6 @@ func (lp *ListPack) Insert(index int, datas ...string) {
 		lp.data = slices.Insert(lp.data, pos, alloc...)
 		bpool.Put(alloc)
 	}
-}
-
-func (lp *ListPack) First(data string) (res int, ok bool) {
-	lp.Range(0, -1, func(old []byte, index int) bool {
-		if bytes.Equal(s2b(&data), old) {
-			res, ok = index, true
-		}
-		return ok
-	})
-	return
 }
 
 func (lp *ListPack) Set(index int, data string) (ok bool) {

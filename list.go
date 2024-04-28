@@ -15,7 +15,12 @@ import (
 // QuickList is double linked listpack.
 type QuickList struct {
 	mu         sync.RWMutex
-	head, tail *ListPack
+	head, tail *Node
+}
+
+type Node struct {
+	*ListPack
+	prev, next *Node
 }
 
 func SetMaxListPackSize(s int) {
@@ -24,16 +29,20 @@ func SetMaxListPackSize(s int) {
 
 // New create a quicklist instance.
 func New() *QuickList {
-	lp := NewListPack()
-	return &QuickList{head: lp, tail: lp}
+	n := newNode()
+	return &QuickList{head: n, tail: n}
+}
+
+func newNode() *Node {
+	return &Node{ListPack: NewListPack()}
 }
 
 func (ls *QuickList) lpush(key string) {
 	if len(ls.head.data)+len(key) >= maxListPackSize {
-		lp := NewListPack()
-		lp.next = ls.head
-		ls.head.prev = lp
-		ls.head = lp
+		n := newNode()
+		n.next = ls.head
+		ls.head.prev = n
+		ls.head = n
 	}
 	ls.head.Insert(0, key)
 }
@@ -49,10 +58,10 @@ func (ls *QuickList) LPush(keys ...string) {
 
 func (ls *QuickList) rpush(key string) {
 	if len(ls.tail.data)+len(key) >= maxListPackSize {
-		lp := NewListPack()
-		ls.tail.next = lp
-		lp.prev = ls.tail
-		ls.tail = lp
+		n := newNode()
+		ls.tail.next = n
+		n.prev = ls.tail
+		ls.tail = n
 	}
 	ls.tail.Insert(-1, key)
 }
@@ -94,23 +103,23 @@ func (ls *QuickList) RPop() (key string, ok bool) {
 	return
 }
 
-// free release empty listpack.
-func (ls *QuickList) free(lp *ListPack) {
-	if lp.size == 0 && lp.prev != nil && lp.next != nil {
-		lp.prev.next = lp.next
-		lp.next.prev = lp.prev
-		bpool.Put(lp.data)
-		lp = nil
+// free release empty list node.
+func (ls *QuickList) free(n *Node) {
+	if n.size == 0 && n.prev != nil && n.next != nil {
+		n.prev.next = n.next
+		n.next.prev = n.prev
+		bpool.Put(n.data)
+		n = nil
 	}
 }
 
 // find quickly locates `listpack` and it `indexInternal` based on index.
-func (ls *QuickList) find(index int) (*ListPack, int) {
-	var lp *ListPack
-	for lp = ls.head; lp != nil && index >= lp.Size(); lp = lp.next {
-		index -= lp.Size()
+func (ls *QuickList) find(index int) (*Node, int) {
+	var n *Node
+	for n = ls.head; n != nil && index >= n.Size(); n = n.next {
+		index -= n.Size()
 	}
-	return lp, index
+	return n, index
 }
 
 // Set
@@ -259,12 +268,11 @@ func (ls *QuickList) UnmarshalBinary(src []byte) error {
 	if len(src) < 8 {
 		return ErrUnmarshal
 	}
-
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
 	ls.head = nil
-	var last *ListPack
+	var last *Node
 
 	for index := 0; len(src)-index >= 8; {
 		// dataLen
@@ -274,21 +282,24 @@ func (ls *QuickList) UnmarshalBinary(src []byte) error {
 		if index+8+int(dataLen) > len(src) {
 			return ErrUnmarshal
 		}
-		lp, err := NewFromBytes(src[index : index+8+int(dataLen)])
+
+		lp, err := NewFromBytes(src[index:])
 		if err != nil {
 			return err
 		}
-		lp.prev = last
+		node := &Node{ListPack: lp}
+
+		node.prev = last
 		index = index + 8 + int(dataLen)
 
 		if ls.head == nil {
-			ls.head = lp
+			ls.head = node
 		}
 		if last != nil {
-			last.next = lp
+			last.next = node
 		}
-		ls.tail = lp
-		last = lp
+		ls.tail = node
+		last = node
 	}
 	return nil
 }

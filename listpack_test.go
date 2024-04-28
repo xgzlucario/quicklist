@@ -2,6 +2,7 @@ package quicklist
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
 )
 
@@ -128,11 +129,8 @@ func TestListPack(t *testing.T) {
 		lp := genListPack(0, N)
 
 		index, ok := lp.RemoveFirst(genKey(N))
-		if index != 0 {
-			t.Error(index, N)
-		}
-		if ok {
-			t.Error(ok)
+		if index != 0 || ok {
+			t.Error(ok, index, N)
 		}
 
 		index, ok = lp.RemoveFirst(genKey(0))
@@ -154,12 +152,12 @@ func TestListPack(t *testing.T) {
 				t.Error(ok)
 			}
 
-			index, ok := lp.First(newKey)
-			if index != i {
-				t.Error(index, i)
-			}
-			if !ok {
-				t.Error(ok)
+			var val string
+			lp.find(i, func(data []byte, index, _, _ int) {
+				val = string(data)
+			})
+			if newKey != val {
+				t.Error(ok, val, i)
 			}
 		}
 
@@ -169,12 +167,12 @@ func TestListPack(t *testing.T) {
 			t.Error(ok)
 		}
 
-		index, ok := lp.First("last")
-		if index != N-1 {
-			t.Error(index, N-1)
-		}
-		if !ok {
-			t.Error(ok)
+		var val string
+		lp.find(lp.Size()-1, func(data []byte, index, _, _ int) {
+			val = string(data)
+		})
+		if string("last") != val {
+			t.Error(ok, val)
 		}
 
 		// out of bound
@@ -269,5 +267,98 @@ func TestListPack(t *testing.T) {
 		}
 		isNotNil(t, err)
 
+	})
+}
+
+func FuzzListPack(f *testing.F) {
+	ls := NewListPack()
+	vls := make([]string, 0, 4096)
+
+	f.Fuzz(func(t *testing.T, rkey string) {
+		switch rand.IntN(15) {
+		// RPush
+		case 0, 1, 2:
+			ls.Insert(-1, rkey)
+			vls = append(vls, rkey)
+
+		// LPush
+		case 3, 4, 5:
+			ls.Insert(0, rkey)
+			vls = append([]string{rkey}, vls...)
+
+		// LPop
+		case 6, 7:
+			val, ok := ls.Remove(0)
+			if len(vls) > 0 {
+				valVls := vls[0]
+				vls = vls[1:]
+				equal(t, val, valVls)
+				equal(t, true, ok)
+			} else {
+				equal(t, val, "")
+				equal(t, false, ok)
+			}
+
+		// RPop
+		case 8, 9:
+			val, ok := ls.Remove(-1)
+			if len(vls) > 0 {
+				valVls := vls[len(vls)-1]
+				vls = vls[:len(vls)-1]
+				equal(t, val, valVls)
+				equal(t, true, ok)
+			} else {
+				equal(t, val, "")
+				equal(t, false, ok)
+			}
+
+		// Set
+		case 10:
+			if len(vls) > 0 {
+				index := rand.IntN(len(vls))
+				ok := ls.Set(index, rkey)
+				equal(t, true, ok)
+				vls[index] = rkey
+			}
+
+		// Remove
+		case 12:
+			if len(vls) > 0 {
+				index := rand.IntN(len(vls))
+				val, ok := ls.Remove(index)
+				equal(t, val, vls[index])
+				equal(t, true, ok)
+				vls = append(vls[:index], vls[index+1:]...)
+			}
+
+		// Range
+		case 13:
+			if len(vls) <= 1 {
+				break
+			}
+			end := rand.IntN(len(vls)-1) + 1
+			start := rand.IntN(end)
+
+			var count int
+			ls.Range(start, end, func(data []byte, index int) (stop bool) {
+				equal(t, b2s(data), vls[start+count])
+				count++
+				return false
+			})
+
+		// MarshalBinary
+		case 14:
+			data := ls.ToBytes()
+			nls := New()
+			err := nls.UnmarshalBinary(data)
+			isNil(t, err)
+
+			var i int
+			nls.Range(0, -1, func(data []byte) bool {
+				equal(t, b2s(data), vls[i])
+				i++
+				return false
+			})
+		}
 	})
 }
