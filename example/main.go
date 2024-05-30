@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"unsafe"
 
 	"github.com/xgzlucario/quicklist"
 )
@@ -12,10 +11,6 @@ func genKey(i int) string {
 }
 
 func main() {
-	lp := quicklist.NewListPack()
-	fmt.Println(unsafe.Sizeof(*lp))
-	lp.Remove(1)
-
 	ls := quicklist.New()
 
 	// RPush

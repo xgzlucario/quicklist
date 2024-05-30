@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
-	"sync"
 )
 
 //	 +------------------------------ QuickList -----------------------------+
@@ -14,7 +13,6 @@ import (
 //
 // QuickList is double linked listpack.
 type QuickList struct {
-	mu         sync.RWMutex
 	head, tail *Node
 }
 
@@ -49,11 +47,9 @@ func (ls *QuickList) lpush(key string) {
 
 // LPush
 func (ls *QuickList) LPush(keys ...string) {
-	ls.mu.Lock()
 	for _, k := range keys {
 		ls.lpush(k)
 	}
-	ls.mu.Unlock()
 }
 
 func (ls *QuickList) rpush(key string) {
@@ -68,11 +64,9 @@ func (ls *QuickList) rpush(key string) {
 
 // RPush
 func (ls *QuickList) RPush(keys ...string) {
-	ls.mu.Lock()
 	for _, k := range keys {
 		ls.rpush(k)
 	}
-	ls.mu.Unlock()
 }
 
 // Index
@@ -91,9 +85,6 @@ func (ls *QuickList) LPop() (string, bool) {
 
 // RPop
 func (ls *QuickList) RPop() (key string, ok bool) {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-
 	for lp := ls.tail; lp != nil; lp = lp.prev {
 		if lp.size > 0 {
 			return lp.Remove(-1)
@@ -124,9 +115,6 @@ func (ls *QuickList) find(index int) (*Node, int) {
 
 // Set
 func (ls *QuickList) Set(index int, key string) bool {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-
 	lp, indexInternal := ls.find(index)
 	if lp != nil {
 		return lp.Set(indexInternal, key)
@@ -136,9 +124,6 @@ func (ls *QuickList) Set(index int, key string) bool {
 
 // Remove
 func (ls *QuickList) Remove(index int) (val string, ok bool) {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-
 	lp, indexInternal := ls.find(index)
 	if lp != nil {
 		val, ok = lp.Remove(indexInternal)
@@ -149,9 +134,6 @@ func (ls *QuickList) Remove(index int) (val string, ok bool) {
 
 // RemoveFirst
 func (ls *QuickList) RemoveFirst(key string) (res int, ok bool) {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-
 	for lp := ls.head; lp != nil; lp = lp.next {
 		if lp.size == 0 {
 			ls.free(lp)
@@ -170,11 +152,9 @@ func (ls *QuickList) RemoveFirst(key string) (res int, ok bool) {
 
 // Size
 func (ls *QuickList) Size() (n int) {
-	ls.mu.RLock()
 	for lp := ls.head; lp != nil; lp = lp.next {
 		n += lp.Size()
 	}
-	ls.mu.RUnlock()
 	return
 }
 
@@ -235,16 +215,12 @@ func (ls *QuickList) iterBack(start, end int, f lsIterator) {
 
 // Range
 func (ls *QuickList) Range(start, end int, f lsIterator) {
-	ls.mu.RLock()
 	ls.iterFront(start, end, f)
-	ls.mu.RUnlock()
 }
 
 // RevRange
 func (ls *QuickList) RevRange(start, end int, f lsIterator) {
-	ls.mu.RLock()
 	ls.iterBack(start, end, f)
-	ls.mu.RUnlock()
 }
 
 var order = binary.LittleEndian
@@ -252,8 +228,6 @@ var order = binary.LittleEndian
 // MarshalBinary
 func (ls *QuickList) MarshalBinary() ([]byte, error) {
 	data := bpool.Get(1024)[:0]
-	ls.mu.RLock()
-	defer ls.mu.RUnlock()
 
 	for lp := ls.head; lp != nil && lp.size > 0; lp = lp.next {
 		data = append(data, lp.ToBytes()...)
@@ -268,8 +242,6 @@ func (ls *QuickList) UnmarshalBinary(src []byte) error {
 	if len(src) < 8 {
 		return ErrUnmarshal
 	}
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
 
 	ls.head = nil
 	var last *Node
